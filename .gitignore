@@ -1,0 +1,82 @@
+# ─────────────────────────────────────────────
+# new-zip-dao — 공공임대 MCP 크롤러
+# (크롤러 + 구조화/벡터 DB. MCP 서버는 별도 저장소)
+# ─────────────────────────────────────────────
+
+# ── Secrets / 환경변수 (절대 커밋 금지) ──
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+credentials.json
+service-account*.json
+
+# ── 수집 데이터 / 산출물 (홈서버·T5 보관, 저장소 제외) ──
+data/
+raw/
+downloads/
+archive/
+notices/
+*.pdf
+*.hwp
+*.hwpx
+*.zip
+# 단, 샘플/픽스처는 보존
+!tests/**/fixtures/**
+
+# ── 벡터 / 구조화 DB ──
+*.db
+*.sqlite
+*.sqlite3
+*.duckdb
+*.faiss
+*.index
+chroma/
+.chroma/
+vectorstore/
+*.parquet
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ── 테스트 / 타입체크 / 린트 캐시 ──
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# ── Jupyter ──
+.ipynb_checkpoints/
+
+# ── 로그 ──
+*.log
+logs/
+
+# ── 도구 상태 (oh-my-claudecode 등) ──
+.omc/
+.claude/
+
+# ── 에디터 / OS ──
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
