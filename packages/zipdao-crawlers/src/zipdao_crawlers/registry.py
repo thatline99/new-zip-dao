@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from zipdao_crawlers.base import BaseCrawler
+from zipdao_crawlers.sources.lh_apply import LhApplyCrawler
 from zipdao_crawlers.sources.youth_seoul import YouthSeoulCrawler
 
 
@@ -39,7 +40,8 @@ SOURCES: list[SourceInfo] = [
         name="LH청약플러스",
         category=PORTAL,
         base_url="https://apply.lh.or.kr",
-        notes="국민·공공·행복·매입임대·든든전세 등 LH 공고 대부분. 공고문 PDF/HWP 첨부.",
+        notes="공공데이터 API(15058530)로 공고 메타데이터+DTL_URL 수집. 원본 PDF는 robots 제한으로 제외.",
+        crawler=LhApplyCrawler,
     ),
     SourceInfo(
         key="sh_ish",
