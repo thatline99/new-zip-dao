@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from zipdao_crawlers.base import BaseCrawler
+from zipdao_crawlers.sources.youth_seoul import YouthSeoulCrawler
 
 
 @dataclass(frozen=True)
@@ -59,7 +60,8 @@ SOURCES: list[SourceInfo] = [
         name="서울 청년안심주택",
         category=PORTAL,
         base_url="https://soco.seoul.go.kr/youth",
-        notes="서울시 공동체주택플랫폼. 청년안심주택 민간임대 공고.",
+        notes="서울시 공동체주택플랫폼. 청년안심주택 민간임대 공고. (bbsListJson AJAX + view.do 첨부)",
+        crawler=YouthSeoulCrawler,
     ),
     # ── 지역 도시·개발공사 ──
     SourceInfo(

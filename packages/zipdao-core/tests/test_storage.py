@@ -24,6 +24,13 @@ def test_sanitize_filename_strips_path_separators():
     assert sanitize_filename("") == "file"
 
 
+def test_sanitize_filename_preserves_extension_on_truncation():
+    long_name = "가" * 300 + ".pdf"
+    out = sanitize_filename(long_name)
+    assert len(out) <= 200
+    assert out.endswith(".pdf")  # 확장자 보존 → 더블클릭 시 PDF로 열림
+
+
 def test_year_partition_and_manifest_roundtrip(tmp_path):
     storage = Storage(tmp_path / "raw")
     notice = _make_notice()

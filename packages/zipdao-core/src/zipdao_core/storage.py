@@ -24,13 +24,21 @@ from zipdao_core.models import AssetKind, Attachment, Notice
 _UNSAFE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
 
-def sanitize_filename(name: str, *, fallback: str = "file") -> str:
-    """경로 구분자/제어문자를 제거해 안전한 파일명으로. 한글은 유지."""
+def sanitize_filename(name: str, *, fallback: str = "file", max_len: int = 200) -> str:
+    """경로 구분자/제어문자를 제거해 안전한 파일명으로. 한글 유지, 절단 시 확장자 보존."""
     name = name.strip().replace(" ", " ")
     name = _UNSAFE.sub("_", name)
     name = name.strip(". ")
     name = re.sub(r"\s+", " ", name)
-    return name[:200] if name else fallback
+    if not name:
+        return fallback
+    if len(name) <= max_len:
+        return name
+    stem, dot, ext = name.rpartition(".")
+    if dot and 1 <= len(ext) <= 10:  # 확장자처럼 보이면 보존
+        keep = max(1, max_len - len(ext) - 1)
+        return f"{stem[:keep]}.{ext}"
+    return name[:max_len]
 
 
 def _now_iso() -> str:

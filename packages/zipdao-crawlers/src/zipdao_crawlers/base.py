@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from urllib.parse import unquote, urlsplit
 
 from zipdao_core.http import HttpClient
-from zipdao_core.models import AssetKind, Attachment, Notice, NoticeStub
+from zipdao_core.models import AssetKind, Notice, NoticeStub
 from zipdao_core.storage import Storage
 
 logger = logging.getLogger("zipdao.crawl")
@@ -98,6 +98,11 @@ class CrawlEngine:
         notice = self.crawler.fetch_detail(stub)
         year = (notice.posted_date or "")[:4] or None
         ndir = self.storage.notice_dir(notice.source, notice.notice_id, year)
+
+        # 크롤러가 raw["_detail_html"] 로 넘긴 상세 스냅샷 저장(있으면).
+        detail_html = notice.raw.pop("_detail_html", None)
+        if detail_html:
+            notice.detail_html_path = self.storage.save_detail_html(ndir, detail_html)
 
         for att in notice.attachments:
             try:
