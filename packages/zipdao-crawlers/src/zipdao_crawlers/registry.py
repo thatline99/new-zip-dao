@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from zipdao_crawlers.base import BaseCrawler
 from zipdao_crawlers.sources.applyhome import ApplyhomeCrawler
 from zipdao_crawlers.sources.lh_apply import LhApplyCrawler
+from zipdao_crawlers.sources.myhome import MyhomeCrawler
 from zipdao_crawlers.sources.youth_seoul import YouthSeoulCrawler
 
 
@@ -102,7 +103,8 @@ SOURCES: list[SourceInfo] = [
         name="마이홈포털",
         category=PRIVATE,
         base_url="https://www.myhome.go.kr",
-        notes="국토부 주거복지 통합 포털. LH·SH·지자체·민간 공고 통합 검색(공공지원 민간임대 포함).",
+        notes="국토부 공공주택 API(15108420, HWSPR04). 전국 공공임대 단지·세대(보증금·월세·면적·공급유형).",
+        crawler=MyhomeCrawler,
     ),
 ]
 

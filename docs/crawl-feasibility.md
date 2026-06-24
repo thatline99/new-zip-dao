@@ -11,7 +11,7 @@
 | `gndc` | 경남개발공사 | 🟡 구현 가능(미완) | 정적 셸 + 다중 AJAX 보드(`selectListItemUserList.do`, bbsid 기반). 행 JSON 엔드포인트 추가 발굴 필요 |
 | `applyhome` | 청약홈 | ✅ **API 구현** | odcloud API(15098547). APT 분양/임대 2804건, **2020~2026 이력**. 메타+PBLANC_URL(원본 PDF는 SPA라 제외) |
 | `sh_ish` | SH 인터넷청약 | 🟡 발굴 필요 | SPA 셸(1.4KB). XHR 목록 엔드포인트 발굴 필요 |
-| `myhome` | 마이홈포털 | 🟡 발굴 필요 | SPA 셸(0.5KB). 통합검색 XHR 또는 공공데이터 파일셋 발굴 필요 |
+| `myhome` | 마이홈포털 | ✅ **API 구현** | 공공주택 API(15108420, HWSPR04). 전국 공공임대 단지·세대(보증금·월세·면적·공급유형). signguCode 3자리 |
 | `lh_apply` | LH청약플러스 | ✅ **API 구현(메타만)** | 공공데이터 API(15058530)로 **현재 공고 메타+DTL_URL** 수집. ⚠️ 5년 이력·원본 PDF 불가(아래) |
 | `gh` | 경기주택도시공사 | ⛔ robots(전체) | robots.txt `Disallow: /` — 전체 차단. 존중하여 제외 |
 | `daejeon` | 대전도시공사 | ⛔ WAF | 자동요청 400 "Request Blocked"(WAF). 우회 미시도 |
@@ -36,10 +36,11 @@
 ### ⛔ robots 존중 제외
 - **GH**: `Disallow: /` 전면 차단 → 크롤 제외. (단, 공공데이터 fileData `15119414` GH주택청약 모집정보 CSV는 별도 채널로 활용 가능)
 
-### 🟡 마이홈 공공주택 모집공고 (15108420) — 엔드포인트 확인, 파라미터 스펙 필요
-- 게이트웨이: `http://apis.data.go.kr/1613000/HWSPR04/rentalHouseGwList` (키 동작 확인).
-- 필수: `brtcCode`(시도)+`signguCode`(시군구) 둘 다. 단, 시도/시군구 코드 조합 실측이 모두 NODATA → 정확한 코드/추가 파라미터는 data.go.kr **참고문서(붙임1. 요청 파라미터 코드 xlsx)** 필요(스웨거가 JS/로그인 뒤라 자동 수집 불가).
-- 다음: 참고문서의 시군구 코드표/필수 파라미터 확보 후 구현. 응답에 PDF/파일 URL 포함 여부도 그때 확인.
+### ✅ myhome — 마이홈 공공주택 API 구현
+- 엔드포인트: `http://apis.data.go.kr/1613000/HWSPR04/rentalHouseGwList` (serviceKey, **brtcCode 2자리 + signguCode 3자리** 필수).
+- 참고문서 코드표에서 시군구 255개 추출 → `sources/_myhome_regions.py` 임베드. 시군구별 조회 → 단지별 manifest.
+- 데이터: 기관·주소·공급유형(영구/국민/행복/매입/통합공공 등)·주택유형·**면적·보증금·월임대료** (PDF 아님, 구조화 데이터).
+- ⚠️ 초기 NODATA 원인 = signguCode를 5자리(11110)로 넣어서. 정답은 3자리(종로 110, 강남 680). 참고문서로 해결.
 
 ### ⚠️ 차단/실패 (추가 작업 필요)
 - **대전도시공사**: WAF가 비브라우저 요청 차단. 정식 협의 또는 공식 데이터 채널 권장.
