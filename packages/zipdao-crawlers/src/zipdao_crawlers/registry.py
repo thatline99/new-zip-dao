@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from zipdao_crawlers.base import BaseCrawler
+from zipdao_crawlers.sources.applyhome import ApplyhomeCrawler
 from zipdao_crawlers.sources.lh_apply import LhApplyCrawler
 from zipdao_crawlers.sources.youth_seoul import YouthSeoulCrawler
 
@@ -55,7 +56,8 @@ SOURCES: list[SourceInfo] = [
         name="청약홈",
         category=PORTAL,
         base_url="https://www.applyhome.co.kr",
-        notes="한국부동산원. 분양·공공임대 통합 청약. API(청약홈 분양정보 15098547) 병행 검토.",
+        notes="한국부동산원 odcloud API(15098547). APT 분양/임대 2804건 2020~2026 메타+PBLANC_URL.",
+        crawler=ApplyhomeCrawler,
     ),
     SourceInfo(
         key="youth_seoul",

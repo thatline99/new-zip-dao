@@ -9,7 +9,7 @@
 | --- | --- | --- | --- |
 | `youth_seoul` | 서울 청년안심주택 | ✅ **구현 완료** | eGov AJAX 목록(`bbsListJson.json`) + 서버렌더 상세 + `fileDown.do` 첨부. 실제 PDF 다운로드 검증됨 |
 | `gndc` | 경남개발공사 | 🟡 구현 가능(미완) | 정적 셸 + 다중 AJAX 보드(`selectListItemUserList.do`, bbsid 기반). 행 JSON 엔드포인트 추가 발굴 필요 |
-| `applyhome` | 청약홈 | 🟡 API 권장 | 랜딩이 SPA 셸(1KB). 공식 채널 = 공공데이터포털 `15098547`(서비스키 필요) |
+| `applyhome` | 청약홈 | ✅ **API 구현** | odcloud API(15098547). APT 분양/임대 2804건, **2020~2026 이력**. 메타+PBLANC_URL(원본 PDF는 SPA라 제외) |
 | `sh_ish` | SH 인터넷청약 | 🟡 발굴 필요 | SPA 셸(1.4KB). XHR 목록 엔드포인트 발굴 필요 |
 | `myhome` | 마이홈포털 | 🟡 발굴 필요 | SPA 셸(0.5KB). 통합검색 XHR 또는 공공데이터 파일셋 발굴 필요 |
 | `lh_apply` | LH청약플러스 | ✅ **API 구현(메타만)** | 공공데이터 API(15058530)로 **현재 공고 메타+DTL_URL** 수집. ⚠️ 5년 이력·원본 PDF 불가(아래) |
@@ -45,9 +45,13 @@
 - **대전도시공사**: WAF가 비브라우저 요청 차단. 정식 협의 또는 공식 데이터 채널 권장.
 - **울산도시공사**: 실측 무응답. 시간대/차단 여부 재확인 필요.
 
-### 🟡 SPA — XHR 발굴 필요
-청약홈·SH·마이홈은 랜딩이 JS 셸이라 실제 목록 XHR(JSON) 엔드포인트를 브라우저 네트워크 탭으로 추가 발굴해야 한다.
-청약홈·LH는 **공공데이터포털 OpenAPI**가 공식·합법 채널이므로, 서비스키 확보 후 API 우선 수집을 권장한다(`DATA_GO_KR_SERVICE_KEY`).
+### ✅ applyhome — 청약홈 odcloud API 구현
+- 엔드포인트: `https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/getAPTLttotPblancDetail` (serviceKey, page, perPage).
+- APT 분양/임대 **2804건, 2020~2026(최신순)** — LH와 달리 다년 이력 제공. 메타+PBLANC_URL 수집.
+- 원본 PDF는 청약홈 사이트(SPA)라 제외. 추가 오퍼레이션(오피스텔·무순위·공공지원민간임대)은 후속 확장 가능.
+
+### 🟡 SH — XHR 발굴 필요
+SH 인터넷청약은 랜딩이 JS 셸이라 목록 XHR(JSON) 엔드포인트를 추가 발굴해야 한다.
 
 ## 다음 단계
 1. `DATA_GO_KR_SERVICE_KEY` 확보 → LH(`15058530`)·청약홈(`15098547`) API 소스 추가(메타데이터·상세URL).
