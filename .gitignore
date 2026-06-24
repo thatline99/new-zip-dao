@@ -51,7 +51,7 @@ dist/
 venv/
 env/
 ENV/
-.python-version
+# .python-version 은 uv 프로젝트 버전 고정용으로 추적한다.
 
 # ── 테스트 / 타입체크 / 린트 캐시 ──
 .pytest_cache/

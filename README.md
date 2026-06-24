@@ -1,35 +1,59 @@
 # new-zip-dao
 
-**공공임대 MCP — 데이터 수집(크롤링) 파트**
+**공공임대 공고 수집 모노레포 (크롤러 + 파이프라인)**
 
-국내 공공·지원 임대주택 공고를 수집·정규화하여, 공공임대 MCP 서버가 검색·추천·RAG·법령 응답에 사용할 데이터를 만드는 크롤러/파이프라인 저장소입니다. (MCP 서버 본체는 별도 저장소)
+국내 공공·지원 임대주택 공고를 **사이트별로 5년치 전부**(공고문 PDF·HWP, 공고 내 이미지 포함) 수집·정규화하여,
+공공임대 MCP 서버가 검색·추천·RAG·법령 응답에 쓸 데이터를 만든다. (MCP 서버 본체는 별도 저장소)
 
 > AGENTIC PLAYER 10 (카카오 × 과기정통부 PlayMCP 공모전) 출품작. 벤치마크: [내집다오](https://myzipdao.com/)
+>
+> 현재 단계: **로컬에서 크롤링 가능한 기반** 구축. (홈/OCI 서버 배포는 추후)
 
-## 역할
+## 구조 (uv 워크스페이스)
 
-- **현재 공고**: 공공데이터포털 API(LH 분양임대공고문 · 청약홈 · 마이홈) 수집
-- **5년치 아카이브**: 공고문 PDF/HWP는 API가 제공하지 않음 → LH청약플러스·SH·청년안심주택 게시판 **크롤링**
-- **법령**: 법제처 국가법령정보 OpenAPI (보조: legalize.kr)
-- 수집 결과 → 구조화 DB + 벡터 인덱스(임베딩은 API)
+```
+new-zip-dao/
+├── pyproject.toml                # 워크스페이스 루트
+├── packages/
+│   ├── zipdao-core/              # 공통: 설정·HTTP(재시도/레이트리밋)·저장소(manifest)·모델
+│   └── zipdao-crawlers/          # 베이스/엔진·소스 레지스트리·사이트별 크롤러·CLI
+├── scripts/sync_to_gdrive.sh     # 수집 원본 → Google Drive 백업(rclone)
+├── docs/
+│   ├── sources.md                # 공고 출처 카탈로그
+│   └── data-layout.md            # data/ 디렉터리 레이아웃
+└── data/                         # 수집 원본 (gitignore)
+```
 
-## 인프라
+## 빠른 시작
 
-- 크롤러 + DB: 홈서버(Ubuntu 24.04, Python 3.12)
-- 원본 PDF·벡터DB: 삼성 T5(ext4) · 백업: Google Drive(rclone 야간 sync)
-- MCP 서버 ↔ 홈: 홈이 읽기전용 `/query` API만 Cloudflare Tunnel로 노출
+```bash
+uv sync                              # 의존성 설치(워크스페이스 전체)
+uv run zipdao-crawl list             # 등록된 소스 목록 + 구현 상태(✅/⬜)
+uv run zipdao-crawl run lh_apply --since 2021 --until 2026   # 한 소스 수집
+uv run zipdao-crawl run lh_apply --limit 3                   # 소량 시범 수집
+uv run pytest                        # 코어 단위 테스트
+```
 
-## 데이터 소스
+수집 결과는 `data/raw/<source>/<연도>/<공고id>/` 에 `manifest.json`·`attachments/`·`images/` 로 저장된다
+(레이아웃: [docs/data-layout.md](docs/data-layout.md)).
 
-| 소스 | 형태 | 비고 |
-| --- | --- | --- |
-| 공공데이터포털 LH 분양임대공고문 (`15058530`) | API | 공고명·지역·일정·유형·상세 URL |
-| 청약홈 분양정보 (`15098547`) | API | APT·공공지원민간임대 일정 |
-| 마이홈포털 모집공고 | 파일셋 | 임대료·면적, 공고별 PDF 링크 |
-| 법제처 국가법령정보 OpenAPI | API | 법령 본문·조문·판례 |
-| LH청약플러스 / SH / 청년안심주택 | 크롤링 | 공고 HTML + 첨부 PDF/HWP |
+## 수집 대상
+
+전국 통합 청약 포털(LH청약플러스·SH·청약홈·청년안심주택), 지역 도시·개발공사(GH·UDC·대전·경남), 마이홈포털.
+전체 목록·URL은 [docs/sources.md](docs/sources.md). 각 사이트는 실측 후 `sources/<key>.py` 에 구현해 연결한다.
+
+## 백업
+
+수집 원본은 Google Drive 폴더로 동기화한다(rclone, 야간 배치 예정).
+대상 폴더: <https://drive.google.com/drive/u/0/folders/1GcJb7hMD4XmxJNdrTF3nQsuyyOUnyUDf>
+
+```bash
+brew install rclone && rclone config   # 최초 1회: 'gdrive'(drive 타입) 원격 생성
+DRY_RUN=1 ./scripts/sync_to_gdrive.sh   # 변경분 미리보기
+./scripts/sync_to_gdrive.sh             # 실제 동기화
+```
 
 ## 주의
 
-- API 키·OC키 등 모든 시크릿은 `.env`에만 두고 저장소에 커밋하지 않습니다.
-- 수집한 원본(PDF/HWP)·DB·벡터 인덱스는 `.gitignore` 처리(홈서버·T5 보관).
+- API 키·OC키 등 모든 시크릿은 `.env` 에만 두고 커밋하지 않는다(`.env.example` 참고).
+- 수집 원본(PDF/HWP/이미지)·DB·벡터 인덱스는 `.gitignore` 처리.
