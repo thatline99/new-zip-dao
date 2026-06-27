@@ -1,13 +1,10 @@
-"""마이홈포털 공공주택 모집공고(공공임대주택 단지·세대 정보) — 공공데이터 API.
+"""마이홈포털 공공임대 입주자모집공고 — 공공데이터 API (data.go.kr 1613000).
 
-서비스: 국토교통부_마이홈포털 공공주택 모집공고 조회 (data.go.kr 15108420)
-  엔드포인트: http://apis.data.go.kr/1613000/HWSPR04/rentalHouseGwList
-  필수: serviceKey, brtcCode(광역시도 2자리), signguCode(시군구 3자리)
-  선택: numOfRows, pageNo, houseTy(주택유형), suplyTy(공급유형), 전세형여부, 월임대료구분
-  응답: response.body.item[] — 단지/세대 단위(기관·주소·공급유형·면적·보증금·월임대료).
-
-지역코드는 참고문서에서 추출해 _myhome_regions.REGIONS 에 임베드(255개 시군구).
-PDF 공고문이 아니라 **구조화된 공공임대주택 데이터**를 단지별 manifest로 저장한다.
+오퍼레이션: HWSPR02/rsdtRcritNtcList (공공임대 모집공고 목록)
+필수 파라미터: serviceKey, brtcCode(시도 2자리), signguCode(시군구 3자리)
+응답 item 필드: pblancId, pblancNm, suplyTyNm, rentGtn(보증금), mtRntchrg(월세),
+brtcNm, signguNm, fullAdres, rcritPblancDe, beginDe, endDe, pcUrl, url.
+면적은 이 오퍼레이션에 없음(전용면적은 HWSPR04에 있으나 미인가).
 """
 
 from __future__ import annotations
@@ -19,13 +16,42 @@ from zipdao_core.models import Notice, NoticeStub
 from zipdao_crawlers.base import BaseCrawler
 from zipdao_crawlers.sources._myhome_regions import REGIONS
 
-LIST_EP = "http://apis.data.go.kr/1613000/HWSPR04/rentalHouseGwList"
-NUM_ROWS = 1000
+LIST_EP = "https://apis.data.go.kr/1613000/HWSPR02/rsdtRcritNtcList"
+NUM_ROWS = 100
+
+
+def _iso(yyyymmdd) -> str | None:
+    if not yyyymmdd:
+        return None
+    d = str(yyyymmdd).strip()
+    if len(d) == 8 and d.isdigit():
+        return f"{d[:4]}-{d[4:6]}-{d[6:]}"
+    return None
+
+
+def _won(value) -> int | None:
+    if value is None:
+        return None
+    digits = "".join(ch for ch in str(value) if ch.isdigit())
+    return int(digits) if digits else None
+
+
+def normalize(item: dict) -> dict:
+    return {
+        "supplyType": item.get("suplyTyNm") or None,
+        "depositKRW": _won(item.get("rentGtn")),
+        "monthlyRentKRW": _won(item.get("mtRntchrg")),
+        "areaM2": None,
+        "applyStart": _iso(item.get("beginDe")),
+        "applyEnd": _iso(item.get("endDe")),
+        "summary": None,
+        "eligibility": None,
+    }
 
 
 class MyhomeCrawler(BaseCrawler):
     key = "myhome"
-    name = "마이홈 공공주택(공공데이터 API)"
+    name = "마이홈 공공임대 입주자모집공고(공공데이터 API)"
     base_url = "https://www.myhome.go.kr"
 
     def __init__(self, http) -> None:
@@ -37,25 +63,22 @@ class MyhomeCrawler(BaseCrawler):
             )
 
     def iter_notices(self, since: int | None, until: int | None) -> Iterator[NoticeStub]:
-        # 단지정보 API라 게시일이 없어 연도 필터(since/until)는 적용하지 않는다.
         for brtc, signgu, sido_nm, sgg_nm in REGIONS:
-            rows = self._fetch_region(brtc, signgu)
-            if not rows:
-                continue
-            by_complex: dict[str, list[dict]] = {}
-            for it in rows:
-                key = str(it.get("hsmpSn") or it.get("hsmpNm") or "").strip()
-                by_complex.setdefault(key, []).append(it)
-            for hsmp_sn, units in by_complex.items():
-                head = units[0]
+            for item in self._fetch_region(brtc, signgu):
+                posted = _iso(item.get("rcritPblancDe"))
+                year = int(posted[:4]) if posted and posted[:4].isdigit() else None
+                if since is not None and (year is None or year < since):
+                    continue
+                if until is not None and (year is None or year > until):
+                    continue
                 yield NoticeStub(
-                    notice_id=f"{brtc}{signgu}-{hsmp_sn}",
-                    title=(head.get("hsmpNm") or "").strip(),
-                    detail_url="",
-                    posted_date=None,
-                    category=head.get("suplyTyNm"),
-                    region=f"{sido_nm} {sgg_nm}",
-                    extra={"head": head, "units": units},
+                    notice_id=str(item.get("pblancId") or "").strip(),
+                    title=(item.get("pblancNm") or "").strip(),
+                    detail_url=(item.get("pcUrl") or item.get("url") or "").strip(),
+                    posted_date=posted,
+                    category=item.get("suplyTyNm"),
+                    region=f"{item.get('brtcNm', '')} {item.get('signguNm', '')}".strip(),
+                    extra={"item": item},
                 )
 
     def _fetch_region(self, brtc: str, signgu: str) -> list[dict]:
@@ -83,7 +106,6 @@ class MyhomeCrawler(BaseCrawler):
 
     @staticmethod
     def parse_items(data) -> tuple[list[dict], int]:
-        """response.body.item[] 와 totalCount 추출. NODATA/오류 시 ([],0). 순수 함수."""
         if not isinstance(data, dict):
             return [], 0
         body = data.get("response", {}).get("body") or {}
@@ -94,14 +116,15 @@ class MyhomeCrawler(BaseCrawler):
         return items, total
 
     def fetch_detail(self, stub: NoticeStub) -> Notice:
+        item = stub.extra["item"]
         return Notice(
             source=self.key,
             notice_id=stub.notice_id,
             title=stub.title,
             detail_url=stub.detail_url,
-            posted_date=None,
+            posted_date=stub.posted_date,
             category=stub.category,
             region=stub.region,
             attachments=[],
-            raw={"단지": stub.extra["head"], "세대목록": stub.extra["units"]},
+            raw={"item": item, "normalized": normalize(item)},
         )
