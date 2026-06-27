@@ -19,6 +19,15 @@ def _normalized(notice: Notice) -> dict:
     return block if isinstance(block, dict) else {}
 
 
+def _price(v: object) -> int | None:
+    return v if isinstance(v, int) and v > 0 else None
+
+
+def _is_sale(supply_type: str | None) -> bool:
+    s = supply_type or ""
+    return "분양" in s and "임대" not in s
+
+
 def to_detail(notice: Notice) -> NoticeDetail:
     n = _normalized(notice)
     return NoticeDetail(
@@ -31,8 +40,8 @@ def to_detail(notice: Notice) -> NoticeDetail:
         postedDate=notice.posted_date,
         applyStart=n.get("applyStart"),
         applyEnd=n.get("applyEnd"),
-        depositKRW=n.get("depositKRW"),
-        monthlyRentKRW=n.get("monthlyRentKRW"),
+        depositKRW=_price(n.get("depositKRW")),
+        monthlyRentKRW=_price(n.get("monthlyRentKRW")),
         areaM2=n.get("areaM2"),
         detailUrl=notice.detail_url,
         attachments=[
@@ -99,10 +108,12 @@ class NoticeStore:
         if self.raw_dir.exists():
             for manifest in sorted(self.raw_dir.glob("*/*/*/manifest.json")):
                 try:
-                    data = json.loads(manifest.read_text(encoding="utf-8"))
-                    items.append(to_detail(Notice.from_dict(data)))
+                    detail = to_detail(Notice.from_dict(json.loads(manifest.read_text(encoding="utf-8"))))
                 except Exception:
                     continue
+                if _is_sale(detail.supplyType):
+                    continue
+                items.append(detail)
         self._items = items
 
     def get(self, source: str, notice_id: str) -> NoticeDetail | None:
@@ -160,6 +171,8 @@ class NoticeStore:
     @staticmethod
     def _score(d: NoticeDetail, req: RecommendRequest) -> int:
         score = 0
+        if req.region and _canon_region(req.region) not in _canon_region(d.region or ""):
+            return -1
         budget_set = req.maxDepositKRW is not None or req.maxMonthlyRentKRW is not None
         if budget_set and not (d.depositKRW or d.monthlyRentKRW):
             return -1
@@ -171,8 +184,6 @@ class NoticeStore:
             if d.monthlyRentKRW is None or d.monthlyRentKRW > req.maxMonthlyRentKRW:
                 return -1
             score += 2
-        if req.region and _canon_region(req.region) in _canon_region(d.region or ""):
-            score += 3
         if req.supplyType and req.supplyType in (d.supplyType or ""):
             score += 2
         if req.age is not None and req.age <= 39 and any(

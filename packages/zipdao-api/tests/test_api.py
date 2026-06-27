@@ -206,3 +206,96 @@ def test_recommend_excludes_zero_price_when_budget_set(tmp_path: Path) -> None:
     c = TestClient(create_app(NoticeStore(raw)))
     r = c.post("/recommend", json={"region": "경기", "maxMonthlyRentKRW": 150000, "limit": 5})
     assert r.json()["total"] == 0
+
+
+def test_sale_notices_excluded_but_rental_convertible_kept(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(
+        raw,
+        "applyhome",
+        "2026",
+        "SALE",
+        {
+            "source": "applyhome",
+            "notice_id": "SALE",
+            "title": "서울 APT 분양",
+            "detail_url": "u",
+            "posted_date": "2026-06-01",
+            "category": "APT 분양주택",
+            "region": "서울",
+            "attachments": [],
+            "raw": {"normalized": {"supplyType": "APT 분양주택"}},
+        },
+    )
+    _write(
+        raw,
+        "myhome",
+        "2026",
+        "CONV",
+        {
+            "source": "myhome",
+            "notice_id": "CONV",
+            "title": "서울 분양전환 임대",
+            "detail_url": "u",
+            "posted_date": "2026-06-01",
+            "category": "APT 분양전환 가능임대",
+            "region": "서울",
+            "attachments": [],
+            "raw": {"normalized": {"supplyType": "APT 분양전환 가능임대"}},
+        },
+    )
+    c = TestClient(create_app(NoticeStore(raw)))
+    data = c.get("/notices", params={"limit": 10}).json()
+    assert data["total"] == 1
+    assert data["items"][0]["noticeId"] == "CONV"
+    assert c.get("/notices/applyhome/SALE").status_code == 404
+
+
+def test_recommend_region_is_hard_filter(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(
+        raw,
+        "myhome",
+        "2026",
+        "GG",
+        {
+            "source": "myhome",
+            "notice_id": "GG",
+            "title": "경기 행복주택",
+            "detail_url": "u",
+            "posted_date": "2026-06-01",
+            "category": "행복주택",
+            "region": "경기도",
+            "attachments": [],
+            "raw": {"normalized": {"supplyType": "행복주택", "depositKRW": 10000000, "monthlyRentKRW": 100000}},
+        },
+    )
+    c = TestClient(create_app(NoticeStore(raw)))
+    r = c.post("/recommend", json={"region": "서울", "maxMonthlyRentKRW": 500000, "limit": 5})
+    assert r.json()["total"] == 0
+    assert r.json()["items"] == []
+
+
+def test_zero_price_shown_as_null(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(
+        raw,
+        "myhome",
+        "2026",
+        "ZERO",
+        {
+            "source": "myhome",
+            "notice_id": "ZERO",
+            "title": "서울 매입임대",
+            "detail_url": "u",
+            "posted_date": "2026-06-01",
+            "category": "매입임대",
+            "region": "서울",
+            "attachments": [],
+            "raw": {"normalized": {"supplyType": "매입임대", "depositKRW": 0, "monthlyRentKRW": 0}},
+        },
+    )
+    c = TestClient(create_app(NoticeStore(raw)))
+    d = c.get("/notices/myhome/ZERO").json()
+    assert d["depositKRW"] is None
+    assert d["monthlyRentKRW"] is None
