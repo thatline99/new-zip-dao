@@ -44,3 +44,12 @@ def test_parse_list_empty_dslist():
 def test_parse_list_malformed_is_safe():
     assert LhApplyCrawler.parse_list([]) == ([], 0)
     assert LhApplyCrawler.parse_list([{"unexpected": 1}]) == ([], 0)
+
+
+def test_normalize_uses_specific_supply_type():
+    from zipdao_crawlers.sources.lh_apply import normalize
+
+    n = normalize({"AIS_TP_CD_NM": "국민임대", "UPP_AIS_TP_NM": "임대주택", "CLSG_DT": "2026.07.09"})
+    assert n["supplyType"] == "국민임대"
+    assert n["applyEnd"] == "2026-07-09"
+    assert n["depositKRW"] is None

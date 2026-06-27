@@ -34,6 +34,19 @@ HOUSING_TYPES: list[tuple[str, str]] = [
 ]
 
 
+def normalize(item: dict) -> dict:
+    return {
+        "supplyType": item.get("AIS_TP_CD_NM") or item.get("UPP_AIS_TP_NM") or None,
+        "depositKRW": None,
+        "monthlyRentKRW": None,
+        "areaM2": None,
+        "applyStart": None,
+        "applyEnd": to_iso_date(item.get("CLSG_DT")),
+        "summary": None,
+        "eligibility": None,
+    }
+
+
 class LhApplyCrawler(BaseCrawler):
     key = "lh_apply"
     name = "LH청약플러스(공공데이터 API)"
@@ -103,7 +116,8 @@ class LhApplyCrawler(BaseCrawler):
         return rows, all_cnt
 
     def fetch_detail(self, stub: NoticeStub) -> Notice:
-        # API 목록이 이미 메타데이터를 제공. 원본 PDF는 robots 제한으로 수집 안 함.
+        raw = dict(stub.extra)
+        raw["normalized"] = normalize(raw)
         return Notice(
             source=self.key,
             notice_id=stub.notice_id,
@@ -113,5 +127,5 @@ class LhApplyCrawler(BaseCrawler):
             category=stub.category,
             region=stub.region,
             attachments=[],
-            raw=dict(stub.extra),
+            raw=raw,
         )
