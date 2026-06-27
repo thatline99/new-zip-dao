@@ -6,6 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
     "zipdao-core",
     "zipdao-crawlers",
+    "zipdao-api",
 ]
 
 [dependency-groups]
@@ -19,6 +20,7 @@ members = ["packages/*"]
 [tool.uv.sources]
 zipdao-core = { workspace = true }
 zipdao-crawlers = { workspace = true }
+zipdao-api = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["packages"]

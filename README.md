@@ -16,7 +16,8 @@ new-zip-dao/
 ├── pyproject.toml                # 워크스페이스 루트
 ├── packages/
 │   ├── zipdao-core/              # 공통: 설정·HTTP(재시도/레이트리밋)·저장소(manifest)·모델
-│   └── zipdao-crawlers/          # 베이스/엔진·소스 레지스트리·사이트별 크롤러·CLI
+│   ├── zipdao-crawlers/          # 베이스/엔진·소스 레지스트리·사이트별 크롤러·CLI
+│   └── zipdao-api/               # 서빙 API(FastAPI) — MCP 서버가 호출하는 엔드포인트
 ├── scripts/sync_to_gdrive.sh     # 수집 원본 → Google Drive 백업(rclone)
 ├── docs/
 │   ├── sources.md                # 공고 출처 카탈로그
@@ -36,6 +37,20 @@ uv run pytest                        # 코어 단위 테스트
 
 수집 결과는 `data/raw/<source>/<연도>/<공고id>/` 에 `manifest.json`·`attachments/`·`images/` 로 저장된다
 (레이아웃: [docs/data-layout.md](docs/data-layout.md)).
+
+## 서빙 API (zipdao-api)
+
+수집한 공고를 MCP 서버(별도 저장소)가 검색·조회하도록 HTTP로 제공한다.
+
+```bash
+uv run uvicorn zipdao_api.app:app --port 9000   # 서빙 API 기동 (DATA_DIR 기본 ./data)
+uv run pytest packages/zipdao-api -q            # API 테스트
+```
+
+엔드포인트: `GET /notices`, `GET /notices/{source}/{notice_id}`, `POST /recommend`, `POST /qa`,
+`GET /sources`. 구조화 필드(보증금·월세·면적·공급유형·접수일)는 각 manifest 의 `raw.normalized`
+블록에서 읽는다. 크롤러가 아직 이 블록을 채우지 않으므로, 소스별 정규화 단계 추가 전에는 해당
+필드가 null 이다.
 
 ## 수집 대상
 
