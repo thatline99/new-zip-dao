@@ -60,6 +60,34 @@ def _expand_until(s: str | None) -> str | None:
     return f"{s}-12-31" if len(s) == 4 else s
 
 
+_PROV_VARIANTS: list[tuple[str, tuple[str, ...]]] = [
+    ("강원", ("강원특별자치도", "강원도")),
+    ("전북", ("전북특별자치도", "전라북도")),
+    ("전남", ("전라남도",)),
+    ("경북", ("경상북도",)),
+    ("경남", ("경상남도",)),
+    ("충북", ("충청북도",)),
+    ("충남", ("충청남도",)),
+    ("제주", ("제주특별자치도", "제주도")),
+    ("세종", ("세종특별자치시", "세종시")),
+    ("서울", ("서울특별시",)),
+    ("부산", ("부산광역시",)),
+    ("인천", ("인천광역시",)),
+    ("대구", ("대구광역시",)),
+    ("대전", ("대전광역시",)),
+    ("광주", ("광주광역시",)),
+    ("울산", ("울산광역시",)),
+    ("경기", ("경기도",)),
+]
+
+
+def _canon_region(s: str) -> str:
+    for short, variants in _PROV_VARIANTS:
+        for v in variants:
+            s = s.replace(v, short)
+    return s
+
+
 class NoticeStore:
     def __init__(self, raw_dir: Path) -> None:
         self.raw_dir = Path(raw_dir)
@@ -101,7 +129,7 @@ class NoticeStore:
         for d in self._items:
             if source and d.source != source:
                 continue
-            if region and region not in (d.region or ""):
+            if region and _canon_region(region) not in _canon_region(d.region or ""):
                 continue
             if supply_type and supply_type not in (d.supplyType or ""):
                 continue
@@ -132,6 +160,9 @@ class NoticeStore:
     @staticmethod
     def _score(d: NoticeDetail, req: RecommendRequest) -> int:
         score = 0
+        budget_set = req.maxDepositKRW is not None or req.maxMonthlyRentKRW is not None
+        if budget_set and not (d.depositKRW or d.monthlyRentKRW):
+            return -1
         if req.maxDepositKRW is not None:
             if d.depositKRW is None or d.depositKRW > req.maxDepositKRW:
                 return -1
@@ -140,7 +171,7 @@ class NoticeStore:
             if d.monthlyRentKRW is None or d.monthlyRentKRW > req.maxMonthlyRentKRW:
                 return -1
             score += 2
-        if req.region and req.region in (d.region or ""):
+        if req.region and _canon_region(req.region) in _canon_region(d.region or ""):
             score += 3
         if req.supplyType and req.supplyType in (d.supplyType or ""):
             score += 2
