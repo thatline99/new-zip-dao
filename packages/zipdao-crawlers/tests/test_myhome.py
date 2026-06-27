@@ -56,3 +56,22 @@ def test_regions_table_loaded():
     assert len(REGIONS) > 200
     # 강남구 = 11/680
     assert ("11", "680", "서울특별시", "강남구") in REGIONS
+
+
+def test_normalize_maps_rental_fields():
+    from zipdao_crawlers.sources.myhome import normalize
+
+    item = {
+        "suplyTyNm": "국민임대",
+        "rentGtn": "66,960,000",
+        "mtRntchrg": 267000,
+        "beginDe": "20260618",
+        "endDe": "20260702",
+    }
+    n = normalize(item)
+    assert n["supplyType"] == "국민임대"
+    assert n["depositKRW"] == 66960000
+    assert n["monthlyRentKRW"] == 267000
+    assert n["applyStart"] == "2026-06-18"
+    assert n["applyEnd"] == "2026-07-02"
+    assert n["areaM2"] is None

@@ -103,7 +103,7 @@ SOURCES: list[SourceInfo] = [
         name="마이홈포털",
         category=PRIVATE,
         base_url="https://www.myhome.go.kr",
-        notes="국토부 공공주택 API(15108420, HWSPR04). 전국 공공임대 단지·세대(보증금·월세·면적·공급유형).",
+        notes="국토부 마이홈 API(15108420, HWSPR02 rsdtRcritNtcList). 전국 공공임대 모집공고(보증금·월세·공급유형).",
         crawler=MyhomeCrawler,
     ),
 ]
