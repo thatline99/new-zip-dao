@@ -42,6 +42,7 @@ class SourceInfo(BaseModel):
     name: str
     category: str
     implemented: bool
+    collected: bool
 
 
 class RecommendRequest(BaseModel):
