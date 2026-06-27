@@ -5,7 +5,13 @@ from pathlib import Path
 
 from zipdao_core.models import Notice
 
-from zipdao_api.schema import Attachment, NoticeDetail, NoticeSummary, RecommendRequest
+from zipdao_api.schema import (
+    Attachment,
+    NoticeDetail,
+    NoticeList,
+    NoticeSummary,
+    RecommendRequest,
+)
 
 
 def _normalized(notice: Notice) -> dict:
@@ -87,11 +93,11 @@ class NoticeStore:
         since: str | None,
         until: str | None,
         limit: int,
-    ) -> list[NoticeSummary]:
+    ) -> NoticeList:
         lo = _expand_since(since)
         hi = _expand_until(until)
         needle = q.lower() if q else None
-        out: list[NoticeSummary] = []
+        matches: list[NoticeSummary] = []
         for d in self._items:
             if source and d.source != source:
                 continue
@@ -109,12 +115,10 @@ class NoticeStore:
                 ).lower()
                 if needle not in hay:
                     continue
-            out.append(to_summary(d))
-            if len(out) >= limit:
-                break
-        return out
+            matches.append(to_summary(d))
+        return NoticeList(total=len(matches), items=matches[:limit])
 
-    def recommend(self, req: RecommendRequest) -> list[NoticeSummary]:
+    def recommend(self, req: RecommendRequest) -> NoticeList:
         scored: list[tuple[int, NoticeDetail]] = []
         for d in self._items:
             score = self._score(d, req)
@@ -122,7 +126,8 @@ class NoticeStore:
                 continue
             scored.append((score, d))
         scored.sort(key=lambda x: x[0], reverse=True)
-        return [to_summary(d) for _, d in scored[: req.limit]]
+        items = [to_summary(d) for _, d in scored[: req.limit]]
+        return NoticeList(total=len(scored), items=items)
 
     @staticmethod
     def _score(d: NoticeDetail, req: RecommendRequest) -> int:

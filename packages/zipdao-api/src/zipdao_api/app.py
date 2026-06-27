@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException, Query
 
 from zipdao_api.schema import (
     NoticeDetail,
-    NoticeSummary,
+    NoticeList,
     QaAnswer,
     QaCitation,
     QaRequest,
@@ -29,16 +29,16 @@ def create_app(store: NoticeStore) -> FastAPI:
     def health() -> dict[str, str]:
         return {"status": "ok"}
 
-    @app.get("/notices", response_model=list[NoticeSummary])
+    @app.get("/notices", response_model=NoticeList)
     def search_notices(
-        limit: int = Query(ge=1, le=50),
+        limit: int = Query(ge=1, le=200),
         q: str | None = None,
         region: str | None = None,
         supplyType: str | None = None,
         source: str | None = None,
         since: str | None = None,
         until: str | None = None,
-    ) -> list[NoticeSummary]:
+    ) -> NoticeList:
         return store.search(
             q=q,
             region=region,
@@ -56,8 +56,8 @@ def create_app(store: NoticeStore) -> FastAPI:
             raise HTTPException(status_code=404, detail="notice not found")
         return notice
 
-    @app.post("/recommend", response_model=list[NoticeSummary])
-    def recommend(req: RecommendRequest) -> list[NoticeSummary]:
+    @app.post("/recommend", response_model=NoticeList)
+    def recommend(req: RecommendRequest) -> NoticeList:
         return store.recommend(req)
 
     @app.post("/qa", response_model=QaAnswer)

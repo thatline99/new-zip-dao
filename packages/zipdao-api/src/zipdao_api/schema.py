@@ -32,6 +32,11 @@ class NoticeDetail(NoticeSummary):
     crawledAt: str | None
 
 
+class NoticeList(BaseModel):
+    total: int
+    items: list[NoticeSummary]
+
+
 class SourceInfo(BaseModel):
     key: str
     name: str
@@ -40,7 +45,7 @@ class SourceInfo(BaseModel):
 
 
 class RecommendRequest(BaseModel):
-    limit: int = Field(ge=1, le=20)
+    limit: int = Field(ge=1, le=50)
     region: str | None = None
     age: int | None = None
     monthlyIncomeKRW: int | None = None
