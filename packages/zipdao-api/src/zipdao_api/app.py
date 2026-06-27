@@ -73,8 +73,15 @@ def create_app(store: NoticeStore) -> FastAPI:
 
     @app.get("/sources", response_model=list[SourceInfo])
     def sources() -> list[SourceInfo]:
+        collected = store.collected_sources()
         return [
-            SourceInfo(key=s.key, name=s.name, category=s.category, implemented=s.implemented)
+            SourceInfo(
+                key=s.key,
+                name=s.name,
+                category=s.category,
+                implemented=s.implemented,
+                collected=s.key in collected,
+            )
             for s in iter_sources()
         ]
 

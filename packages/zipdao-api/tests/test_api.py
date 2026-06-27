@@ -105,9 +105,13 @@ def test_sources(tmp_path: Path) -> None:
     c = _client(tmp_path)
     r = c.get("/sources")
     assert r.status_code == 200
-    keys = [s["key"] for s in r.json()]
-    assert "lh_apply" in keys
-    assert "myhome" in keys
+    by_key = {s["key"]: s for s in r.json()}
+    assert "lh_apply" in by_key
+    assert "myhome" in by_key
+    assert by_key["myhome"]["collected"] is True
+    assert by_key["lh_apply"]["collected"] is True
+    assert by_key["youth_seoul"]["implemented"] is True
+    assert by_key["youth_seoul"]["collected"] is False
 
 
 def test_qa(tmp_path: Path) -> None:

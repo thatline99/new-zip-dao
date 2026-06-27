@@ -116,6 +116,9 @@ class NoticeStore:
                 items.append(detail)
         self._items = items
 
+    def collected_sources(self) -> set[str]:
+        return {d.source for d in self._items}
+
     def get(self, source: str, notice_id: str) -> NoticeDetail | None:
         for d in self._items:
             if d.source == source and d.noticeId == notice_id:
