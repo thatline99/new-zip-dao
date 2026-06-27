@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class Attachment(BaseModel):
@@ -40,7 +40,7 @@ class SourceInfo(BaseModel):
 
 
 class RecommendRequest(BaseModel):
-    limit: int
+    limit: int = Field(ge=1, le=20)
     region: str | None = None
     age: int | None = None
     monthlyIncomeKRW: int | None = None

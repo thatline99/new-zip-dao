@@ -64,8 +64,11 @@ class NoticeStore:
         items: list[NoticeDetail] = []
         if self.raw_dir.exists():
             for manifest in sorted(self.raw_dir.glob("*/*/*/manifest.json")):
-                data = json.loads(manifest.read_text(encoding="utf-8"))
-                items.append(to_detail(Notice.from_dict(data)))
+                try:
+                    data = json.loads(manifest.read_text(encoding="utf-8"))
+                    items.append(to_detail(Notice.from_dict(data)))
+                except Exception:
+                    continue
         self._items = items
 
     def get(self, source: str, notice_id: str) -> NoticeDetail | None:
@@ -124,12 +127,12 @@ class NoticeStore:
     @staticmethod
     def _score(d: NoticeDetail, req: RecommendRequest) -> int:
         score = 0
-        if req.maxDepositKRW is not None and d.depositKRW is not None:
-            if d.depositKRW > req.maxDepositKRW:
+        if req.maxDepositKRW is not None:
+            if d.depositKRW is None or d.depositKRW > req.maxDepositKRW:
                 return -1
             score += 2
-        if req.maxMonthlyRentKRW is not None and d.monthlyRentKRW is not None:
-            if d.monthlyRentKRW > req.maxMonthlyRentKRW:
+        if req.maxMonthlyRentKRW is not None:
+            if d.monthlyRentKRW is None or d.monthlyRentKRW > req.maxMonthlyRentKRW:
                 return -1
             score += 2
         if req.region and req.region in (d.region or ""):
@@ -152,4 +155,4 @@ class NoticeStore:
             score = sum(1 for t in tokens if t in hay)
             ranked.append((score, d))
         ranked.sort(key=lambda x: x[0], reverse=True)
-        return [d for _, d in ranked[:n]]
+        return [d for score, d in ranked if score > 0][:n]

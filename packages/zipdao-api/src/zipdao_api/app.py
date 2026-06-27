@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 
 from zipdao_api.schema import (
     NoticeDetail,
@@ -31,7 +31,7 @@ def create_app(store: NoticeStore) -> FastAPI:
 
     @app.get("/notices", response_model=list[NoticeSummary])
     def search_notices(
-        limit: int,
+        limit: int = Query(ge=1, le=50),
         q: str | None = None,
         region: str | None = None,
         supplyType: str | None = None,

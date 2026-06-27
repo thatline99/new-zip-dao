@@ -115,3 +115,45 @@ def test_qa(tmp_path: Path) -> None:
     r = c.post("/qa", json={"question": "서울 국민임대"})
     assert r.status_code == 200
     assert "citations" in r.json()
+
+
+def test_limit_validation(tmp_path: Path) -> None:
+    c = _client(tmp_path)
+    assert c.get("/notices", params={"limit": 0}).status_code == 422
+    assert c.post("/recommend", json={"limit": -1}).status_code == 422
+
+
+def test_bad_manifest_is_skipped(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    good = raw / "myhome" / "2026" / "OK"
+    good.mkdir(parents=True)
+    (good / "manifest.json").write_text(
+        json.dumps(
+            {
+                "source": "myhome",
+                "notice_id": "OK",
+                "title": "서울 국민임대",
+                "detail_url": "u",
+                "posted_date": "2026-06-01",
+                "category": "국민임대",
+                "region": "서울",
+                "attachments": [],
+                "raw": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+    bad = raw / "lh_apply" / "2026" / "BAD"
+    bad.mkdir(parents=True)
+    (bad / "manifest.json").write_text("{ broken json", encoding="utf-8")
+    c = TestClient(create_app(NoticeStore(raw)))
+    r = c.get("/notices", params={"limit": 10})
+    assert r.status_code == 200
+    assert len(r.json()) == 1
+
+
+def test_recommend_excludes_unknown_price_when_budget_set(tmp_path: Path) -> None:
+    c = _client(tmp_path)
+    r = c.post("/recommend", json={"limit": 5, "maxDepositKRW": 1000})
+    assert r.status_code == 200
+    assert r.json() == []
