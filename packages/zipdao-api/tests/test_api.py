@@ -80,9 +80,9 @@ def test_search_by_region(tmp_path: Path) -> None:
     r = c.get("/notices", params={"region": "서울", "limit": 10})
     assert r.status_code == 200
     data = r.json()
-    assert len(data) == 1
-    assert data[0]["noticeId"] == "SEOUL-1"
-    assert data[0]["depositKRW"] == 48000000
+    assert data["total"] == 1
+    assert data["items"][0]["noticeId"] == "SEOUL-1"
+    assert data["items"][0]["depositKRW"] == 48000000
 
 
 def test_get_notice(tmp_path: Path) -> None:
@@ -98,7 +98,7 @@ def test_recommend(tmp_path: Path) -> None:
     r = c.post("/recommend", json={"region": "서울", "maxMonthlyRentKRW": 200000, "limit": 5})
     assert r.status_code == 200
     out = r.json()
-    assert out[0]["noticeId"] == "SEOUL-1"
+    assert out["items"][0]["noticeId"] == "SEOUL-1"
 
 
 def test_sources(tmp_path: Path) -> None:
@@ -149,11 +149,12 @@ def test_bad_manifest_is_skipped(tmp_path: Path) -> None:
     c = TestClient(create_app(NoticeStore(raw)))
     r = c.get("/notices", params={"limit": 10})
     assert r.status_code == 200
-    assert len(r.json()) == 1
+    assert r.json()["total"] == 1
 
 
 def test_recommend_excludes_unknown_price_when_budget_set(tmp_path: Path) -> None:
     c = _client(tmp_path)
     r = c.post("/recommend", json={"limit": 5, "maxDepositKRW": 1000})
     assert r.status_code == 200
-    assert r.json() == []
+    assert r.json()["total"] == 0
+    assert r.json()["items"] == []
