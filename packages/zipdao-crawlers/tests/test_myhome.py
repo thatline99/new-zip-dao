@@ -75,3 +75,13 @@ def test_normalize_maps_rental_fields():
     assert n["applyStart"] == "2026-06-18"
     assert n["applyEnd"] == "2026-07-02"
     assert n["areaM2"] is None
+
+
+def test_iso_rejects_malformed():
+    from zipdao_crawlers.sources.myhome import _iso
+
+    assert _iso("20260618") == "2026-06-18"
+    assert _iso("") is None
+    assert _iso(None) is None
+    assert _iso("미정") is None
+    assert _iso("2026-06-18") is None

@@ -26,7 +26,7 @@ def _iso(yyyymmdd) -> str | None:
     d = str(yyyymmdd).strip()
     if len(d) == 8 and d.isdigit():
         return f"{d[:4]}-{d[4:6]}-{d[6:]}"
-    return d or None
+    return None
 
 
 def _won(value) -> int | None:
