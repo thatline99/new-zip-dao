@@ -158,3 +158,51 @@ def test_recommend_excludes_unknown_price_when_budget_set(tmp_path: Path) -> Non
     assert r.status_code == 200
     assert r.json()["total"] == 0
     assert r.json()["items"] == []
+
+
+def test_region_alias_special_province(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(
+        raw,
+        "lh_apply",
+        "2026",
+        "K1",
+        {
+            "source": "lh_apply",
+            "notice_id": "K1",
+            "title": "원주 국민임대",
+            "detail_url": "u",
+            "posted_date": "2026-06-01",
+            "category": "임대주택",
+            "region": "강원특별자치도",
+            "attachments": [],
+            "raw": {"normalized": {"supplyType": "국민임대"}},
+        },
+    )
+    c = TestClient(create_app(NoticeStore(raw)))
+    assert c.get("/notices", params={"region": "강원도", "limit": 10}).json()["total"] == 1
+    assert c.get("/notices", params={"region": "강원", "limit": 10}).json()["total"] == 1
+
+
+def test_recommend_excludes_zero_price_when_budget_set(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(
+        raw,
+        "myhome",
+        "2026",
+        "Z",
+        {
+            "source": "myhome",
+            "notice_id": "Z",
+            "title": "경기 매입임대",
+            "detail_url": "u",
+            "posted_date": "2026-06-01",
+            "category": "매입임대",
+            "region": "경기도",
+            "attachments": [],
+            "raw": {"normalized": {"supplyType": "매입임대", "depositKRW": 0, "monthlyRentKRW": 0}},
+        },
+    )
+    c = TestClient(create_app(NoticeStore(raw)))
+    r = c.post("/recommend", json={"region": "경기", "maxMonthlyRentKRW": 150000, "limit": 5})
+    assert r.json()["total"] == 0
