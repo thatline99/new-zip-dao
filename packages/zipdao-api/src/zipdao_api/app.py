@@ -38,6 +38,7 @@ def create_app(store: NoticeStore) -> FastAPI:
         source: str | None = None,
         since: str | None = None,
         until: str | None = None,
+        status: str | None = None,
     ) -> NoticeList:
         return store.search(
             q=q,
@@ -46,6 +47,7 @@ def create_app(store: NoticeStore) -> FastAPI:
             source=source,
             since=since,
             until=until,
+            status=status,
             limit=limit,
         )
 
