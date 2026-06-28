@@ -125,7 +125,7 @@ class NoticeStore:
 
     def reload(self) -> None:
         today = self._today()
-        loaded: list[tuple[NoticeDetail, str | None]] = []
+        loaded: list[tuple[NoticeDetail, str | None, str | None]] = []
         if self.raw_dir.exists():
             for manifest in sorted(self.raw_dir.glob("*/*/*/manifest.json")):
                 try:
@@ -136,9 +136,17 @@ class NoticeStore:
                 if _is_sale(detail.supplyType):
                     continue
                 normalized = data.get("raw", {}).get("normalized", {}) or {}
-                loaded.append((detail, normalized.get("supersedes")))
-        superseded = {sup for _, sup in loaded if sup}
-        self._items = [d for d, _ in loaded if d.noticeId not in superseded]
+                loaded.append((detail, normalized.get("supersedes"), normalized.get("lhPanId")))
+        superseded = {sup for _, sup, _ in loaded if sup}
+        lh_twins = {pan for _, _, pan in loaded if pan}
+        items: list[NoticeDetail] = []
+        for detail, _, _ in loaded:
+            if detail.noticeId in superseded:
+                continue
+            if detail.source == "lh_apply" and detail.noticeId in lh_twins:
+                continue
+            items.append(detail)
+        self._items = items
 
     def collected_sources(self) -> set[str]:
         return {d.source for d in self._items}

@@ -383,3 +383,42 @@ def test_superseded_notice_is_dropped(tmp_path: Path) -> None:
     assert data["total"] == 1
     assert data["items"][0]["noticeId"] == "NEW"
     assert c.get("/notices/myhome/OLD").status_code == 404
+
+
+def _lh(notice_id: str, normalized: dict) -> dict:
+    return {
+        "source": "lh_apply",
+        "notice_id": notice_id,
+        "title": f"LH {notice_id}",
+        "detail_url": "u",
+        "posted_date": "2026-06-01",
+        "category": "행복주택",
+        "region": "경기도",
+        "attachments": [],
+        "raw": {"normalized": {"supplyType": "행복주택", "applyEnd": "2026-07-31", **normalized}},
+    }
+
+
+def test_cross_source_lh_twin_dropped_keeps_myhome(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(raw, "myhome", "2026", "M1", _notice("M1", {"applyEnd": "2026-07-31", "lhPanId": "LH-1"}))
+    _write(raw, "lh_apply", "2026", "LH-1", _lh("LH-1", {}))
+    _write(raw, "lh_apply", "2026", "LH-9", _lh("LH-9", {}))
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    ids = sorted(i["noticeId"] for i in c.get("/notices", params={"limit": 10}).json()["items"])
+    assert ids == ["LH-9", "M1"]
+    assert c.get("/notices/lh_apply/LH-1").status_code == 404
+
+
+def test_cross_source_drops_full_lh_chain(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(raw, "myhome", "2026", "MOLD", _notice("MOLD", {"applyEnd": "2026-07-31", "lhPanId": "LH-A"}))
+    _write(
+        raw, "myhome", "2026", "MNEW",
+        _notice("MNEW", {"applyEnd": "2026-07-31", "lhPanId": "LH-B", "supersedes": "MOLD"}),
+    )
+    _write(raw, "lh_apply", "2026", "LH-A", _lh("LH-A", {}))
+    _write(raw, "lh_apply", "2026", "LH-B", _lh("LH-B", {}))
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    ids = sorted(i["noticeId"] for i in c.get("/notices", params={"limit": 10}).json()["items"])
+    assert ids == ["MNEW"]

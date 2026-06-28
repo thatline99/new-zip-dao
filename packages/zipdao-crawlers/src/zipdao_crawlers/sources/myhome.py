@@ -9,6 +9,7 @@ brtcNm, signguNm, fullAdres, rcritPblancDe, beginDe, endDe, pcUrl, url.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterator
 
 from zipdao_core.config import load_settings
@@ -36,6 +37,11 @@ def _won(value) -> int | None:
     return int(digits) if digits else None
 
 
+def _lh_pan_id(url) -> str | None:
+    m = re.search(r"panId=(\d+)", str(url)) if url else None
+    return m.group(1) if m else None
+
+
 def normalize(item: dict) -> dict:
     return {
         "supplyType": item.get("suplyTyNm") or None,
@@ -47,6 +53,7 @@ def normalize(item: dict) -> dict:
         "summary": None,
         "eligibility": None,
         "supersedes": item.get("beforePblancId") or None,
+        "lhPanId": _lh_pan_id(item.get("url")),
     }
 
 
