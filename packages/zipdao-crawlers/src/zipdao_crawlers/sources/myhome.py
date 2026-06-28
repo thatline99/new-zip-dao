@@ -46,6 +46,7 @@ def normalize(item: dict) -> dict:
         "applyEnd": _iso(item.get("endDe")),
         "summary": None,
         "eligibility": None,
+        "supersedes": item.get("beforePblancId") or None,
     }
 
 

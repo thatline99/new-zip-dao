@@ -8,6 +8,8 @@ from fastapi.testclient import TestClient
 from zipdao_api.app import create_app
 from zipdao_api.store import NoticeStore
 
+TODAY = "2026-06-28"
+
 
 def _write(raw_dir: Path, source: str, year: str, notice_id: str, body: dict) -> None:
     d = raw_dir / source / year / notice_id
@@ -72,7 +74,7 @@ def _client(tmp_path: Path) -> TestClient:
             "crawled_at": "2026-06-24T05:00:00+00:00",
         },
     )
-    return TestClient(create_app(NoticeStore(raw)))
+    return TestClient(create_app(NoticeStore(raw, today=TODAY)))
 
 
 def test_search_by_region(tmp_path: Path) -> None:
@@ -150,7 +152,7 @@ def test_bad_manifest_is_skipped(tmp_path: Path) -> None:
     bad = raw / "lh_apply" / "2026" / "BAD"
     bad.mkdir(parents=True)
     (bad / "manifest.json").write_text("{ broken json", encoding="utf-8")
-    c = TestClient(create_app(NoticeStore(raw)))
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
     r = c.get("/notices", params={"limit": 10})
     assert r.status_code == 200
     assert r.json()["total"] == 1
@@ -183,7 +185,7 @@ def test_region_alias_special_province(tmp_path: Path) -> None:
             "raw": {"normalized": {"supplyType": "국민임대"}},
         },
     )
-    c = TestClient(create_app(NoticeStore(raw)))
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
     assert c.get("/notices", params={"region": "강원도", "limit": 10}).json()["total"] == 1
     assert c.get("/notices", params={"region": "강원", "limit": 10}).json()["total"] == 1
 
@@ -207,7 +209,7 @@ def test_recommend_excludes_zero_price_when_budget_set(tmp_path: Path) -> None:
             "raw": {"normalized": {"supplyType": "매입임대", "depositKRW": 0, "monthlyRentKRW": 0}},
         },
     )
-    c = TestClient(create_app(NoticeStore(raw)))
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
     r = c.post("/recommend", json={"region": "경기", "maxMonthlyRentKRW": 150000, "limit": 5})
     assert r.json()["total"] == 0
 
@@ -248,7 +250,7 @@ def test_sale_notices_excluded_but_rental_convertible_kept(tmp_path: Path) -> No
             "raw": {"normalized": {"supplyType": "APT 분양전환 가능임대"}},
         },
     )
-    c = TestClient(create_app(NoticeStore(raw)))
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
     data = c.get("/notices", params={"limit": 10}).json()
     assert data["total"] == 1
     assert data["items"][0]["noticeId"] == "CONV"
@@ -274,7 +276,7 @@ def test_recommend_region_is_hard_filter(tmp_path: Path) -> None:
             "raw": {"normalized": {"supplyType": "행복주택", "depositKRW": 10000000, "monthlyRentKRW": 100000}},
         },
     )
-    c = TestClient(create_app(NoticeStore(raw)))
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
     r = c.post("/recommend", json={"region": "서울", "maxMonthlyRentKRW": 500000, "limit": 5})
     assert r.json()["total"] == 0
     assert r.json()["items"] == []
@@ -299,7 +301,85 @@ def test_zero_price_shown_as_null(tmp_path: Path) -> None:
             "raw": {"normalized": {"supplyType": "매입임대", "depositKRW": 0, "monthlyRentKRW": 0}},
         },
     )
-    c = TestClient(create_app(NoticeStore(raw)))
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
     d = c.get("/notices/myhome/ZERO").json()
     assert d["depositKRW"] is None
     assert d["monthlyRentKRW"] is None
+
+
+def _notice(notice_id: str, normalized: dict) -> dict:
+    return {
+        "source": "myhome",
+        "notice_id": notice_id,
+        "title": f"공고 {notice_id}",
+        "detail_url": "u",
+        "posted_date": "2026-06-01",
+        "category": "행복주택",
+        "region": "경기도",
+        "attachments": [],
+        "raw": {"normalized": {"supplyType": "행복주택", **normalized}},
+    }
+
+
+def test_status_is_computed_from_dates(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(raw, "myhome", "2026", "CLOSED", _notice("CLOSED", {"applyEnd": "2026-05-01"}))
+    _write(
+        raw, "myhome", "2026", "UPCOMING",
+        _notice("UPCOMING", {"applyStart": "2026-12-01", "applyEnd": "2026-12-31"}),
+    )
+    _write(
+        raw, "myhome", "2026", "OPEN",
+        _notice("OPEN", {"applyStart": "2026-06-01", "applyEnd": "2026-07-31"}),
+    )
+    _write(raw, "myhome", "2026", "UNKNOWN", _notice("UNKNOWN", {}))
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    assert c.get("/notices/myhome/CLOSED").json()["status"] == "마감"
+    assert c.get("/notices/myhome/UPCOMING").json()["status"] == "예정"
+    assert c.get("/notices/myhome/OPEN").json()["status"] == "접수중"
+    assert c.get("/notices/myhome/UNKNOWN").json()["status"] == "미정"
+
+
+def test_search_filters_by_status(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(raw, "myhome", "2026", "CLOSED", _notice("CLOSED", {"applyEnd": "2026-05-01"}))
+    _write(
+        raw, "myhome", "2026", "OPEN",
+        _notice("OPEN", {"applyStart": "2026-06-01", "applyEnd": "2026-07-31"}),
+    )
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    assert c.get("/notices", params={"limit": 10}).json()["total"] == 2
+    open_only = c.get("/notices", params={"limit": 10, "status": "접수중"}).json()
+    assert open_only["total"] == 1
+    assert open_only["items"][0]["noticeId"] == "OPEN"
+
+
+def test_recommend_defaults_to_open_and_can_override(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(
+        raw, "myhome", "2026", "CLOSED",
+        _notice("CLOSED", {"applyEnd": "2026-05-01", "depositKRW": 1000, "monthlyRentKRW": 100}),
+    )
+    _write(
+        raw, "myhome", "2026", "OPEN",
+        _notice("OPEN", {"applyStart": "2026-06-01", "applyEnd": "2026-07-31", "depositKRW": 1000, "monthlyRentKRW": 100}),
+    )
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    default = c.post("/recommend", json={"region": "경기", "limit": 10}).json()
+    assert [i["noticeId"] for i in default["items"]] == ["OPEN"]
+    all_status = c.post("/recommend", json={"region": "경기", "limit": 10, "status": "전체"}).json()
+    assert all_status["total"] == 2
+
+
+def test_superseded_notice_is_dropped(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(raw, "myhome", "2026", "OLD", _notice("OLD", {"applyEnd": "2026-07-31"}))
+    _write(
+        raw, "myhome", "2026", "NEW",
+        _notice("NEW", {"applyEnd": "2026-07-31", "supersedes": "OLD"}),
+    )
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    data = c.get("/notices", params={"limit": 10}).json()
+    assert data["total"] == 1
+    assert data["items"][0]["noticeId"] == "NEW"
+    assert c.get("/notices/myhome/OLD").status_code == 404

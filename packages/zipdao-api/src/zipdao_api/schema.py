@@ -23,6 +23,7 @@ class NoticeSummary(BaseModel):
     monthlyRentKRW: int | None
     areaM2: float | None
     detailUrl: str
+    status: str
 
 
 class NoticeDetail(NoticeSummary):
@@ -49,11 +50,10 @@ class RecommendRequest(BaseModel):
     limit: int = Field(ge=1, le=50)
     region: str | None = None
     age: int | None = None
-    monthlyIncomeKRW: int | None = None
-    householdSize: int | None = None
     maxDepositKRW: int | None = None
     maxMonthlyRentKRW: int | None = None
     supplyType: str | None = None
+    status: str | None = None
 
 
 class QaRequest(BaseModel):
