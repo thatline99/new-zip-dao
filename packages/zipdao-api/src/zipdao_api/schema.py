@@ -62,15 +62,3 @@ class RecommendRequest(BaseModel):
 
 class QaRequest(BaseModel):
     question: str
-
-
-class QaCitation(BaseModel):
-    source: str
-    noticeId: str
-    title: str
-    detailUrl: str
-
-
-class QaAnswer(BaseModel):
-    answer: str
-    citations: list[QaCitation]
