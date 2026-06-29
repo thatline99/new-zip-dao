@@ -59,11 +59,11 @@ def create_app(store: NoticeStore) -> FastAPI:
         return notice
 
     @app.post("/recommend", response_model=NoticeList)
-    def recommend(req: RecommendRequest) -> NoticeList:
+    def recommend_notices(req: RecommendRequest) -> NoticeList:
         return store.recommend(req)
 
     @app.post("/qa", response_model=QaAnswer)
-    def qa(req: QaRequest) -> QaAnswer:
+    def answer_question(req: QaRequest) -> QaAnswer:
         hits = store.top_for_question(req.question, 3)
         return QaAnswer(
             answer=f'"{req.question}" 관련 공고 {len(hits)}건을 찾았습니다. RAG 기반 상세 답변은 추후 제공됩니다.',
@@ -74,7 +74,7 @@ def create_app(store: NoticeStore) -> FastAPI:
         )
 
     @app.get("/sources", response_model=list[SourceInfo])
-    def sources() -> list[SourceInfo]:
+    def list_sources() -> list[SourceInfo]:
         collected = store.collected_sources()
         return [
             SourceInfo(
