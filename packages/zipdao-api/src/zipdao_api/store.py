@@ -20,7 +20,7 @@ def _normalized(notice: Notice) -> dict:
     return block if isinstance(block, dict) else {}
 
 
-def _price(v: object) -> int | None:
+def _price_or_none(v: object) -> int | None:
     return v if isinstance(v, int) and v > 0 else None
 
 
@@ -57,8 +57,8 @@ def to_detail(notice: Notice, today: str) -> NoticeDetail:
         postedDate=notice.posted_date,
         applyStart=apply_start,
         applyEnd=apply_end,
-        depositKRW=_price(n.get("depositKRW")),
-        monthlyRentKRW=_price(n.get("monthlyRentKRW")),
+        depositKRW=_price_or_none(n.get("depositKRW")),
+        monthlyRentKRW=_price_or_none(n.get("monthlyRentKRW")),
         areaM2=n.get("areaM2"),
         detailUrl=notice.detail_url,
         status=compute_status(apply_start, apply_end, today),
@@ -110,7 +110,7 @@ _PROV_VARIANTS: list[tuple[str, tuple[str, ...]]] = [
 ]
 
 
-def _canon_region(s: str) -> str:
+def _canonicalize_region(s: str) -> str:
     for short, variants in _PROV_VARIANTS:
         for v in variants:
             s = s.replace(v, short)
@@ -184,7 +184,7 @@ class NoticeStore:
         for d in self._items:
             if source and d.source != source:
                 continue
-            if region and _canon_region(region) not in _canon_region(d.region or ""):
+            if region and _canonicalize_region(region) not in _canonicalize_region(d.region or ""):
                 continue
             if supply_type and supply_type not in (d.supplyType or ""):
                 continue
@@ -221,7 +221,7 @@ class NoticeStore:
     @staticmethod
     def _score(d: NoticeDetail, req: RecommendRequest) -> int:
         score = 0
-        if req.region and _canon_region(req.region) not in _canon_region(d.region or ""):
+        if req.region and _canonicalize_region(req.region) not in _canonicalize_region(d.region or ""):
             return -1
         budget_set = req.maxDepositKRW is not None or req.maxMonthlyRentKRW is not None
         if budget_set and not (d.depositKRW or d.monthlyRentKRW):
