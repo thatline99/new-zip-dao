@@ -139,6 +139,8 @@ class NoticeStore:
                     continue
                 if _is_sale(detail.supplyType) or _is_non_housing(detail.supplyType):
                     continue
+                if detail.category == "공지/안내":
+                    continue
                 normalized = data.get("raw", {}).get("normalized", {}) or {}
                 loaded.append((detail, normalized.get("supersedes"), normalized.get("lhPanId")))
         superseded = {sup for _, sup, _ in loaded if sup}

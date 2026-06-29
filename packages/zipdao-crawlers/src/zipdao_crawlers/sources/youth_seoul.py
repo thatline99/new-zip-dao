@@ -19,16 +19,16 @@ from bs4 import BeautifulSoup
 from zipdao_core.dates import to_iso_date
 from zipdao_core.models import Attachment, Notice, NoticeStub
 from zipdao_crawlers.base import BaseCrawler
+from zipdao_crawlers.normalize import normalize_youth
 
 BASE = "https://soco.seoul.go.kr"
 LIST_JSON = f"{BASE}/youth/pgm/home/yohome/bbsListJson.json"
 
 # (bbsId, menuNo, 게시판 이름)
-# BMSR00015=임대주택 모집공고(게시일 optn1=ISO), BMSR00013=공지/안내(날짜 epoch ms).
-# BMSR00020(매입임대)은 실측 totRow=0(빈 보드)이라 제외.
+# BMSR00015=임대주택 모집공고(게시일 optn1=ISO)만 수집한다.
+# BMSR00013(공지/안내)은 주택공고가 아니라 제외, BMSR00020(매입임대)은 빈 보드라 제외.
 BOARDS: list[tuple[str, str, str]] = [
     ("BMSR00015", "400008", "임대주택 모집공고"),
-    ("BMSR00013", "400018", "공지/안내"),
 ]
 
 
@@ -94,6 +94,7 @@ class YouthSeoulCrawler(BaseCrawler):
                         "bbsId": bbs_id, "menuNo": menu_no, "boardId": board_id,
                         "atchFileId": r.get("atchFileId"),
                         "gubun": r.get("optn2"),
+                        "applyDate": to_iso_date(r.get("optn4")),
                     },
                 )
             total_page = int(paging.get("totPage") or 0)
@@ -122,6 +123,15 @@ class YouthSeoulCrawler(BaseCrawler):
         resp = self.http.get(stub.detail_url)
         attachments = self.parse_attachments(resp.text)
 
+        raw = {
+            "bbsId": stub.extra.get("bbsId"),
+            "boardId": stub.extra.get("boardId"),
+            "gubun": stub.extra.get("gubun"),
+            "postedDate": stub.posted_date,
+            "applyDate": stub.extra.get("applyDate"),
+            "_detail_html": resp.text,
+        }
+        raw["normalized"] = normalize_youth(raw)
         return Notice(
             source=self.key,
             notice_id=stub.notice_id,
@@ -131,10 +141,5 @@ class YouthSeoulCrawler(BaseCrawler):
             category=stub.category,
             region=stub.region,
             attachments=attachments,
-            raw={
-                "bbsId": stub.extra.get("bbsId"),
-                "boardId": stub.extra.get("boardId"),
-                "gubun": stub.extra.get("gubun"),
-                "_detail_html": resp.text,
-            },
+            raw=raw,
         )

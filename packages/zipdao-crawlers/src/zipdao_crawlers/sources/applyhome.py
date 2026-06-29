@@ -20,6 +20,7 @@ from zipdao_core.config import load_settings
 from zipdao_core.dates import to_iso_date
 from zipdao_core.models import Notice, NoticeStub
 from zipdao_crawlers.base import BaseCrawler
+from zipdao_crawlers.normalize import normalize_applyhome
 
 ODCLOUD_EP = (
     "https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/getAPTLttotPblancDetail"
@@ -92,6 +93,8 @@ class ApplyhomeCrawler(BaseCrawler):
         return rows, total
 
     def fetch_detail(self, stub: NoticeStub) -> Notice:
+        raw = dict(stub.extra)
+        raw["normalized"] = normalize_applyhome(raw)
         return Notice(
             source=self.key,
             notice_id=stub.notice_id,
@@ -101,5 +104,5 @@ class ApplyhomeCrawler(BaseCrawler):
             category=stub.category,
             region=stub.region,
             attachments=[],
-            raw=dict(stub.extra),
+            raw=raw,
         )
