@@ -38,7 +38,7 @@ def _won(value) -> int | None:
 
 
 def _lh_pan_id(url) -> str | None:
-    m = re.search(r"panId=(\d+)", str(url)) if url else None
+    m = re.search(r"[?&]panId=(\d+)", str(url)) if url else None
     return m.group(1) if m else None
 
 

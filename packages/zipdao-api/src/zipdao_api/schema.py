@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+NoticeStatus = Literal["접수중", "마감", "예정", "미정"]
 
 
 class Attachment(BaseModel):
@@ -53,7 +57,7 @@ class RecommendRequest(BaseModel):
     maxDepositKRW: int | None = None
     maxMonthlyRentKRW: int | None = None
     supplyType: str | None = None
-    status: str | None = None
+    status: Literal["접수중", "마감", "예정", "미정", "전체"] | None = None
 
 
 class QaRequest(BaseModel):

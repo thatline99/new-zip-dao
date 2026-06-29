@@ -147,7 +147,7 @@ class NoticeStore:
         lh_twins = {pan for _, _, pan in loaded if pan}
         items: list[NoticeDetail] = []
         for detail, _, _ in loaded:
-            if detail.noticeId in superseded:
+            if detail.source == "myhome" and detail.noticeId in superseded:
                 continue
             if detail.source == "lh_apply" and detail.noticeId in lh_twins:
                 continue
