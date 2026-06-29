@@ -410,6 +410,17 @@ def test_cross_source_lh_twin_dropped_keeps_myhome(tmp_path: Path) -> None:
     assert c.get("/notices/lh_apply/LH-1").status_code == 404
 
 
+def test_non_housing_daycare_excluded(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(raw, "lh_apply", "2026", "DC", _lh("DC", {"supplyType": "가정어린이집"}))
+    _write(raw, "lh_apply", "2026", "OK", _lh("OK", {"supplyType": "국민임대"}))
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    data = c.get("/notices", params={"limit": 10}).json()
+    assert data["total"] == 1
+    assert data["items"][0]["noticeId"] == "OK"
+    assert c.get("/notices/lh_apply/DC").status_code == 404
+
+
 def test_cross_source_drops_full_lh_chain(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
     _write(raw, "myhome", "2026", "MOLD", _notice("MOLD", {"applyEnd": "2026-07-31", "lhPanId": "LH-A"}))

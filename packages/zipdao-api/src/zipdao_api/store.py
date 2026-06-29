@@ -29,6 +29,10 @@ def _is_sale(supply_type: str | None) -> bool:
     return "분양" in s and "임대" not in s
 
 
+def _is_non_housing(supply_type: str | None) -> bool:
+    return "어린이집" in (supply_type or "")
+
+
 def compute_status(apply_start: str | None, apply_end: str | None, today: str) -> str:
     if apply_end and apply_end < today:
         return "마감"
@@ -133,7 +137,7 @@ class NoticeStore:
                     detail = to_detail(Notice.from_dict(data), today)
                 except Exception:
                     continue
-                if _is_sale(detail.supplyType):
+                if _is_sale(detail.supplyType) or _is_non_housing(detail.supplyType):
                     continue
                 normalized = data.get("raw", {}).get("normalized", {}) or {}
                 loaded.append((detail, normalized.get("supersedes"), normalized.get("lhPanId")))
