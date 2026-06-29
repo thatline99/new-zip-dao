@@ -3,6 +3,7 @@
     zipdao-crawl list                     등록된 소스 목록
     zipdao-crawl run <source> [옵션]      한 소스 수집
     zipdao-crawl run all [옵션]           구현된 모든 소스 수집
+    zipdao-crawl normalize <source|all>   기존 manifest 에 raw.normalized 백필
 
 옵션: --since 2021 --until 2026 --limit N --force --data-dir PATH
 """
@@ -10,6 +11,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 
@@ -17,6 +19,7 @@ from zipdao_core.config import load_settings
 from zipdao_core.http import HttpClient
 from zipdao_core.storage import Storage
 from zipdao_crawlers.base import CrawlEngine, CrawlStats
+from zipdao_crawlers.normalize import normalize_for
 from zipdao_crawlers.registry import SourceInfo, get_source, iter_sources
 
 
@@ -96,6 +99,42 @@ def _cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_normalize(args: argparse.Namespace) -> int:
+    settings = load_settings()
+    data_dir = args.data_dir or settings.data_dir
+    raw_dir = data_dir / "raw"
+    if not raw_dir.exists():
+        print(f"데이터 경로 없음: {raw_dir}", file=sys.stderr)
+        return 1
+    if args.source == "all":
+        sources = sorted(p.name for p in raw_dir.iterdir() if p.is_dir())
+    else:
+        sources = [args.source]
+
+    total = 0
+    for src in sources:
+        updated = 0
+        for manifest in sorted((raw_dir / src).glob("*/*/manifest.json")):
+            try:
+                data = json.loads(manifest.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            raw = data.get("raw") or {}
+            normalized = normalize_for(src, raw)
+            if not normalized:
+                continue
+            raw["normalized"] = normalized
+            data["raw"] = raw
+            manifest.write_text(
+                json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+            updated += 1
+        logging.info("정규화: %s — %d건 갱신", src, updated)
+        total += updated
+    print(f"정규화 완료: 총 {total}건 갱신")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="zipdao-crawl", description="공공임대 공고 로컬 크롤러")
     parser.add_argument("-v", "--verbose", action="store_true", help="DEBUG 로그")
@@ -110,6 +149,10 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--limit", type=int, default=None, help="신규 공고 최대 건수")
     run.add_argument("--force", action="store_true", help="이미 수집된 공고도 재수집")
     run.add_argument("--data-dir", type=_path, default=None, help="데이터 루트(기본 ./data)")
+
+    norm = sub.add_parser("normalize", help="기존 manifest 에 raw.normalized 백필")
+    norm.add_argument("source", help="소스 key 또는 'all'")
+    norm.add_argument("--data-dir", type=_path, default=None, help="데이터 루트(기본 ./data)")
     return parser
 
 
@@ -127,6 +170,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_list(args)
     if args.command == "run":
         return _cmd_run(args)
+    if args.command == "normalize":
+        return _cmd_normalize(args)
     parser.print_help()
     return 1
 
