@@ -9,8 +9,6 @@ from zipdao_api.schema import (
     NoticeDetail,
     NoticeList,
     NoticeStatus,
-    QaAnswer,
-    QaCitation,
     QaRequest,
     RecommendRequest,
     SourceInfo,
@@ -63,16 +61,9 @@ def create_app(store: NoticeStore) -> FastAPI:
     def recommend_notices(req: RecommendRequest) -> NoticeList:
         return store.recommend(req)
 
-    @app.post("/qa", response_model=QaAnswer)
-    def answer_question(req: QaRequest) -> QaAnswer:
-        hits = store.top_for_question(req.question, 3)
-        return QaAnswer(
-            answer=f'"{req.question}" 관련 공고 {len(hits)}건을 찾았습니다. RAG 기반 상세 답변은 추후 제공됩니다.',
-            citations=[
-                QaCitation(source=d.source, noticeId=d.noticeId, title=d.title, detailUrl=d.detailUrl)
-                for d in hits
-            ],
-        )
+    @app.post("/qa", response_model=NoticeList)
+    def answer_question(req: QaRequest) -> NoticeList:
+        return store.relevant_to_question(req.question, 5)
 
     @app.get("/sources", response_model=list[SourceInfo])
     def list_sources() -> list[SourceInfo]:

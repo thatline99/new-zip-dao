@@ -244,14 +244,19 @@ class NoticeStore:
             score += 1
         return score
 
-    def top_for_question(self, question: str, n: int) -> list[NoticeDetail]:
+    def relevant_to_question(self, question: str, limit: int) -> NoticeList:
+        today = self._today()
         tokens = {t for t in question.lower().split() if t}
-        ranked: list[tuple[int, NoticeDetail]] = []
+        ranked: list[tuple[int, int, NoticeDetail]] = []
         for d in self._items:
             hay = " ".join(
                 [d.title, d.region or "", d.category or "", d.supplyType or "", d.summary or ""]
             ).lower()
             score = sum(1 for t in tokens if t in hay)
-            ranked.append((score, d))
-        ranked.sort(key=lambda x: x[0], reverse=True)
-        return [d for score, d in ranked if score > 0][:n]
+            if score <= 0:
+                continue
+            open_first = 1 if compute_status(d.applyStart, d.applyEnd, today) == "접수중" else 0
+            ranked.append((score, open_first, d))
+        ranked.sort(key=lambda x: (x[0], x[1]), reverse=True)
+        items = [to_summary(d, today) for _, _, d in ranked[:limit]]
+        return NoticeList(total=len(ranked), items=items)

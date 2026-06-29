@@ -116,11 +116,14 @@ def test_sources(tmp_path: Path) -> None:
     assert by_key["youth_seoul"]["collected"] is False
 
 
-def test_qa(tmp_path: Path) -> None:
+def test_qa_returns_relevant_notices(tmp_path: Path) -> None:
     c = _client(tmp_path)
     r = c.post("/qa", json={"question": "서울 국민임대"})
     assert r.status_code == 200
-    assert "citations" in r.json()
+    out = r.json()
+    assert "items" in out
+    assert out["items"][0]["noticeId"] == "SEOUL-1"
+    assert out["items"][0]["status"]
 
 
 def test_limit_validation(tmp_path: Path) -> None:
