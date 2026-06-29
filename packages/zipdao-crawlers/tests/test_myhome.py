@@ -85,3 +85,14 @@ def test_iso_rejects_malformed():
     assert _iso(None) is None
     assert _iso("미정") is None
     assert _iso("2026-06-18") is None
+
+
+def test_lh_pan_id_parses_query_param_only():
+    from zipdao_crawlers.sources.myhome import _lh_pan_id
+
+    assert _lh_pan_id("https://apply.lh.or.kr/...?panId=2015122300020009&x=1") == "2015122300020009"
+    assert _lh_pan_id("https://x/?a=1&panId=123") == "123"
+    # must not match a substring like oldpanId / xpanId
+    assert _lh_pan_id("https://x/?oldpanId=999") is None
+    assert _lh_pan_id("") is None
+    assert _lh_pan_id(None) is None

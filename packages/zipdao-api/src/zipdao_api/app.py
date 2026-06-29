@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException, Query
 from zipdao_api.schema import (
     NoticeDetail,
     NoticeList,
+    NoticeStatus,
     QaAnswer,
     QaCitation,
     QaRequest,
@@ -38,7 +39,7 @@ def create_app(store: NoticeStore) -> FastAPI:
         source: str | None = None,
         since: str | None = None,
         until: str | None = None,
-        status: str | None = None,
+        status: NoticeStatus | None = None,
     ) -> NoticeList:
         return store.search(
             q=q,

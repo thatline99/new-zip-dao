@@ -421,6 +421,23 @@ def test_non_housing_daycare_excluded(tmp_path: Path) -> None:
     assert c.get("/notices/lh_apply/DC").status_code == 404
 
 
+def test_supersede_does_not_cross_source(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    # myhome head whose supersedes id collides with an unrelated lh_apply id
+    _write(raw, "myhome", "2026", "MA", _notice("MA", {"applyEnd": "2026-07-31", "supersedes": "X1"}))
+    _write(raw, "lh_apply", "2026", "X1", _lh("X1", {"supplyType": "국민임대"}))
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    ids = sorted(i["noticeId"] for i in c.get("/notices", params={"limit": 10}).json()["items"])
+    assert ids == ["MA", "X1"]
+    assert c.get("/notices/lh_apply/X1").status_code == 200
+
+
+def test_invalid_status_is_rejected(tmp_path: Path) -> None:
+    c = _client(tmp_path)
+    assert c.get("/notices", params={"limit": 10, "status": "접수"}).status_code == 422
+    assert c.post("/recommend", json={"limit": 5, "status": "접수"}).status_code == 422
+
+
 def test_cross_source_drops_full_lh_chain(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
     _write(raw, "myhome", "2026", "MOLD", _notice("MOLD", {"applyEnd": "2026-07-31", "lhPanId": "LH-A"}))
