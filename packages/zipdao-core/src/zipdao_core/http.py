@@ -1,7 +1,4 @@
-"""HTTP 클라이언트 래퍼 — 재시도 + 단순 레이트리밋.
-
-크롤러는 이 클라이언트로 목록/상세 HTML과 첨부(바이너리)를 가져온다.
-"""
+"""재시도와 레이트리밋을 갖춘 HTTP 클라이언트 래퍼."""
 
 from __future__ import annotations
 
@@ -16,6 +13,8 @@ logger = logging.getLogger("zipdao.http")
 
 
 class HttpClient:
+    """재시도·레이트리밋이 내장된 HTTP 클라이언트."""
+
     def __init__(
         self,
         *,
@@ -62,9 +61,11 @@ class HttpClient:
         raise last_exc
 
     def get(self, url: str, **kwargs) -> httpx.Response:
+        """GET 요청을 보낸다(재시도 내장)."""
         return self._request("GET", url, **kwargs)
 
     def post(self, url: str, **kwargs) -> httpx.Response:
+        """POST 요청을 보낸다(재시도 내장)."""
         return self._request("POST", url, **kwargs)
 
     @contextmanager
@@ -76,6 +77,7 @@ class HttpClient:
             yield resp
 
     def close(self) -> None:
+        """내부 HTTP 클라이언트를 닫는다."""
         self._client.close()
 
     def __enter__(self) -> "HttpClient":

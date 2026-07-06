@@ -1,13 +1,4 @@
-"""서울 청년안심주택 (soco.seoul.go.kr/youth) 크롤러.
-
-실측 결과(검증본):
-  - 목록은 JS AJAX: POST /youth/pgm/home/yohome/bbsListJson.json
-      data: bbsId, pageIndex, searchAdresGu, searchCondition, searchKeyword, optn2, optn5
-      resp(JSON): resultList[{boardId, nttSj, optn1(게시일 YYYY-MM-DD), optn2(공공/민간),
-                  optn3(담당), optn4(청약신청일), atchFileId, regDate, ...}], pagingInfo{totPage,...}
-  - 상세는 서버 렌더링: GET /youth/bbs/{bbsId}/view.do?boardId=..&menuNo=..
-      첨부: <span class="file"> 안의 <a href="/coHouse/cmmn/file/fileDown.do?atchFileId=..&fileSn=..">파일명</a>
-"""
+"""서울 청년안심주택(soco.seoul.go.kr/youth) 크롤러."""
 
 from __future__ import annotations
 
@@ -24,20 +15,20 @@ from zipdao_crawlers.normalize import normalize_youth
 BASE = "https://soco.seoul.go.kr"
 LIST_JSON = f"{BASE}/youth/pgm/home/yohome/bbsListJson.json"
 
-# (bbsId, menuNo, 게시판 이름)
-# BMSR00015=임대주택 모집공고(게시일 optn1=ISO)만 수집한다.
-# BMSR00013(공지/안내)은 주택공고가 아니라 제외, BMSR00020(매입임대)은 빈 보드라 제외.
 BOARDS: list[tuple[str, str, str]] = [
     ("BMSR00015", "400008", "임대주택 모집공고"),
 ]
 
 
 class YouthSeoulCrawler(BaseCrawler):
+    """서울 청년안심주택 게시판을 수집하는 크롤러."""
+
     key = "youth_seoul"
     name = "서울 청년안심주택"
     base_url = f"{BASE}/youth"
 
     def iter_notices(self, since: int | None, until: int | None) -> Iterator[NoticeStub]:
+        """등록된 게시판을 순회하며 공고 요약을 만든다."""
         for bbs_id, menu_no, board_name in BOARDS:
             yield from self._iter_board(bbs_id, menu_no, board_name, since, until)
 
@@ -65,16 +56,15 @@ class YouthSeoulCrawler(BaseCrawler):
 
             stop = False
             for r in rows:
-                # 보드별 날짜 표기 상이: optn1(ISO) → nttBgnde/regDate(epoch ms) 순 폴백.
                 posted = to_iso_date(
                     r.get("optn1") or r.get("nttBgnde") or r.get("regDate")
                 )
                 year = int(posted[:4]) if posted and posted[:4].isdigit() else None
                 if year is not None:
                     if until is not None and year > until:
-                        continue  # 너무 최신 — 건너뛰고 더 과거로
+                        continue
                     if since is not None and year < since:
-                        stop = True  # 목록은 최신순 → since 미만이면 이후 전부 과거
+                        stop = True
                         continue
                 board_id = str(r.get("boardId") or "").strip()
                 if not board_id:
@@ -104,7 +94,7 @@ class YouthSeoulCrawler(BaseCrawler):
 
     @staticmethod
     def parse_attachments(html: str) -> list[Attachment]:
-        """상세 HTML에서 fileDown.do 첨부 링크를 추출(중복 제거). 순수 함수(테스트용)."""
+        """상세 HTML에서 첨부 링크를 추출한다(중복 제거)."""
         soup = BeautifulSoup(html, "lxml")
         attachments: list[Attachment] = []
         seen: set[str] = set()
@@ -120,6 +110,7 @@ class YouthSeoulCrawler(BaseCrawler):
         return attachments
 
     def fetch_detail(self, stub: NoticeStub) -> Notice:
+        """상세 페이지에서 첨부를 추출해 Notice 를 만든다."""
         resp = self.http.get(stub.detail_url)
         attachments = self.parse_attachments(resp.text)
 

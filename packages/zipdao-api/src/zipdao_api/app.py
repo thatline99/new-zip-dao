@@ -1,3 +1,5 @@
+"""FastAPI 앱 팩토리 — 공고 검색/추천/QA REST 엔드포인트를 등록한다."""
+
 from __future__ import annotations
 
 import os
@@ -22,6 +24,7 @@ def _raw_dir() -> Path:
 
 
 def create_app(store: NoticeStore) -> FastAPI:
+    """FastAPI 앱을 만들고 공고 조회 라우트를 등록한다."""
     app = FastAPI(title="zipdao-api", version="0.1.0")
 
     @app.get("/health")

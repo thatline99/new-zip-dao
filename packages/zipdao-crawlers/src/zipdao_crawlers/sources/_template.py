@@ -1,12 +1,4 @@
-"""사이트별 크롤러 구현 템플릿 (복사해서 사용).
-
-실측(probing) 후 채울 것:
-  - 목록/검색 엔드포인트와 페이지네이션 방식 (GET 쿼리? POST? 연도 필터?)
-  - 공고 1건의 detail_url 패턴과 notice_id 추출 규칙
-  - 상세 페이지에서 첨부(PDF/HWP/ZIP)·이미지 링크 셀렉터
-
-HTML 파싱은 bs4(lxml)를, 요청은 `self.http`(재시도·레이트리밋 내장)를 쓴다.
-"""
+"""사이트별 크롤러 구현 템플릿(복사해서 사용)."""
 
 from __future__ import annotations
 
@@ -19,20 +11,22 @@ from zipdao_crawlers.base import BaseCrawler
 
 
 class TemplateCrawler(BaseCrawler):
+    """새 사이트 크롤러 작성 시 참고할 예시 구현."""
+
     key = "template"
     name = "예시"
     base_url = "https://example.com"
 
     def iter_notices(self, since: int | None, until: int | None) -> Iterator[NoticeStub]:
+        """목록 페이지를 순회하며 공고 요약을 만든다(예시)."""
         page = 1
         while True:
             resp = self.http.get(self.base_url, params={"page": page})
             soup = BeautifulSoup(resp.text, "lxml")
-            rows = soup.select("table.board tbody tr")  # TODO: 실제 셀렉터
+            rows = soup.select("table.board tbody tr")
             if not rows:
                 break
             for row in rows:
-                # TODO: 행에서 제목/링크/날짜 추출
                 yield NoticeStub(
                     notice_id="...",
                     title="...",
@@ -42,10 +36,11 @@ class TemplateCrawler(BaseCrawler):
             page += 1
 
     def fetch_detail(self, stub: NoticeStub) -> Notice:
+        """상세 페이지에서 첨부를 추출해 Notice 를 만든다(예시)."""
         resp = self.http.get(stub.detail_url)
         soup = BeautifulSoup(resp.text, "lxml")
         attachments: list[Attachment] = []
-        for a in soup.select("a.file"):  # TODO: 실제 첨부 셀렉터
+        for a in soup.select("a.file"):
             href = a.get("href", "")
             attachments.append(Attachment(url=href, filename=a.get_text(strip=True)))
         return Notice(

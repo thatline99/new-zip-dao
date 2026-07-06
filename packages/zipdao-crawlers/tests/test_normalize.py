@@ -1,8 +1,7 @@
-"""정규화 디스패치 단위 테스트 (네트워크 불필요)."""
-
 from __future__ import annotations
 
 from zipdao_crawlers.normalize import (
+    _area,
     normalize_applyhome,
     normalize_for,
     normalize_myhome,
@@ -78,3 +77,11 @@ def test_youth_announcement_without_apply_date_has_no_dates():
 
 def test_dispatch_unknown_source_is_empty():
     assert normalize_for("nope", {"x": 1}) == {}
+
+
+def test_area_parses_unit_suffixed_string():
+    assert _area("84.99㎡") == 84.99
+    assert _area("26.34") == 26.34
+    assert _area(26.34) == 26.34
+    assert _area("없음") is None
+    assert _area(None) is None

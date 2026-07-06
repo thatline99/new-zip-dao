@@ -1,15 +1,4 @@
-"""원본 산출물 저장소.
-
-디스크 레이아웃 (자세한 내용은 docs/data-layout.md):
-
-    {data_dir}/raw/{source}/{YYYY}/{notice_id}/
-        manifest.json          # 공고 메타 + 첨부 목록 + 체크섬 + 수집시각
-        detail.html            # 상세 페이지 스냅샷(있을 때)
-        attachments/<파일명>   # PDF·HWP·ZIP 등
-        images/<파일명>        # 공고 내 이미지
-
-manifest.json 존재 = 수집 완료로 간주(멱등 재실행 시 스킵).
-"""
+"""원본 수집 산출물(manifest·첨부·이미지)의 디스크 저장소."""
 
 from __future__ import annotations
 
@@ -25,7 +14,7 @@ _UNSAFE = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
 
 
 def sanitize_filename(name: str, *, fallback: str = "file", max_len: int = 200) -> str:
-    """경로 구분자/제어문자를 제거해 안전한 파일명으로. 한글 유지, 절단 시 확장자 보존."""
+    """경로 구분자/제어문자를 제거해 안전한 파일명으로 바꾼다."""
     name = name.strip().replace(" ", " ")
     name = _UNSAFE.sub("_", name)
     name = name.strip(". ")
@@ -35,7 +24,7 @@ def sanitize_filename(name: str, *, fallback: str = "file", max_len: int = 200) 
     if len(name) <= max_len:
         return name
     stem, dot, ext = name.rpartition(".")
-    if dot and 1 <= len(ext) <= 10:  # 확장자처럼 보이면 보존
+    if dot and 1 <= len(ext) <= 10:
         keep = max(1, max_len - len(ext) - 1)
         return f"{stem[:keep]}.{ext}"
     return name[:max_len]
@@ -46,18 +35,23 @@ def _now_iso() -> str:
 
 
 class Storage:
+    """수집 산출물을 디스크에 저장/조회하는 저장소."""
+
     def __init__(self, raw_dir: Path) -> None:
         self.raw_dir = Path(raw_dir)
 
     def notice_dir(self, source: str, notice_id: str, year: str | None) -> Path:
+        """공고 한 건의 저장 디렉터리 경로를 만든다."""
         year = year or "unknown"
         safe_id = sanitize_filename(notice_id, fallback="notice")
         return self.raw_dir / source / year / safe_id
 
     def manifest_path(self, source: str, notice_id: str, year: str | None) -> Path:
+        """공고 manifest.json 의 경로를 만든다."""
         return self.notice_dir(source, notice_id, year) / "manifest.json"
 
     def is_crawled(self, source: str, notice_id: str, year: str | None) -> bool:
+        """해당 공고가 이미 수집되었는지 확인한다."""
         return self.manifest_path(source, notice_id, year).exists()
 
     def save_asset(
@@ -66,7 +60,7 @@ class Storage:
         attachment: Attachment,
         data: bytes,
     ) -> Attachment:
-        """바이트를 저장하고 체크섬/크기/경로를 채운 Attachment를 반환."""
+        """바이트를 저장하고 체크섬/크기/경로를 채운 Attachment 를 반환한다."""
         subdir = "images" if attachment.kind is AssetKind.IMAGE else "attachments"
         dest_dir = notice_dir / subdir
         dest_dir.mkdir(parents=True, exist_ok=True)
@@ -82,6 +76,7 @@ class Storage:
         return attachment
 
     def save_detail_html(self, notice_dir: Path, html: str | bytes) -> str:
+        """상세 페이지 HTML 스냅샷을 저장한다."""
         notice_dir.mkdir(parents=True, exist_ok=True)
         dest = notice_dir / "detail.html"
         if isinstance(html, bytes):
@@ -91,6 +86,7 @@ class Storage:
         return str(dest.relative_to(self.raw_dir))
 
     def write_manifest(self, notice: Notice) -> Path:
+        """공고를 manifest.json 으로 저장한다."""
         year = (notice.posted_date or "")[:4] or None
         ndir = self.notice_dir(notice.source, notice.notice_id, year)
         ndir.mkdir(parents=True, exist_ok=True)
@@ -104,6 +100,7 @@ class Storage:
         return path
 
     def read_manifest(self, source: str, notice_id: str, year: str | None) -> Notice | None:
+        """manifest.json 을 읽어 Notice 로 되돌린다."""
         path = self.manifest_path(source, notice_id, year)
         if not path.exists():
             return None
@@ -111,7 +108,6 @@ class Storage:
 
     @staticmethod
     def _unique_path(path: Path) -> Path:
-        """같은 이름이 있으면 ` (2)`, ` (3)` … 을 붙여 충돌 회피."""
         if not path.exists():
             return path
         stem, suffix = path.stem, path.suffix

@@ -1,5 +1,3 @@
-"""youth_seoul 첨부 파서 단위 테스트 (네트워크 불필요)."""
-
 from __future__ import annotations
 
 from zipdao_core.models import AssetKind

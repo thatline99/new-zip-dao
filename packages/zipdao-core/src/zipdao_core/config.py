@@ -1,7 +1,4 @@
-"""환경설정 로딩.
-
-`.env`가 있으면 가볍게 파싱(외부 의존성 없이)하여 환경변수로 주입한 뒤 Settings를 만든다.
-"""
+"""환경설정(.env 포함) 로딩."""
 
 from __future__ import annotations
 
@@ -25,6 +22,8 @@ def _load_dotenv(path: Path) -> None:
 
 @dataclass
 class Settings:
+    """크롤러/설정 환경변수 값 모음."""
+
     data_dir: Path
     user_agent: str
     request_timeout: float
@@ -33,17 +32,18 @@ class Settings:
 
     @property
     def raw_dir(self) -> Path:
+        """원본 수집 데이터 디렉터리 경로."""
         return self.data_dir / "raw"
 
     @property
     def state_dir(self) -> Path:
+        """크롤러 상태 파일 디렉터리 경로."""
         return self.data_dir / "state"
 
 
 def load_settings(dotenv: Path | None = None) -> Settings:
-    """환경변수(필요시 .env)에서 Settings를 만든다."""
+    """환경변수(필요시 .env)에서 Settings 를 만든다."""
     if dotenv is None:
-        # 저장소 루트의 .env 를 찾아본다.
         cwd = Path.cwd()
         for parent in (cwd, *cwd.parents):
             candidate = parent / ".env"

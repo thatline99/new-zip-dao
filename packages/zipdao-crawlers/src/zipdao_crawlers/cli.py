@@ -1,12 +1,4 @@
-"""zipdao-crawl — 로컬 크롤링 CLI.
-
-    zipdao-crawl list                     등록된 소스 목록
-    zipdao-crawl run <source> [옵션]      한 소스 수집
-    zipdao-crawl run all [옵션]           구현된 모든 소스 수집
-    zipdao-crawl normalize <source|all>   기존 manifest 에 raw.normalized 백필
-
-옵션: --since 2021 --until 2026 --limit N --force --data-dir PATH
-"""
+"""zipdao-crawl 로컬 크롤링 CLI 진입점."""
 
 from __future__ import annotations
 
@@ -136,6 +128,7 @@ def _cmd_normalize(args: argparse.Namespace) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
+    """CLI 서브커맨드(list/run/normalize) 파서를 만든다."""
     parser = argparse.ArgumentParser(prog="zipdao-crawl", description="공공임대 공고 로컬 크롤러")
     parser.add_argument("-v", "--verbose", action="store_true", help="DEBUG 로그")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -163,6 +156,7 @@ def _path(value: str):
 
 
 def main(argv: list[str] | None = None) -> int:
+    """CLI 진입점 — 인자를 파싱해 서브커맨드를 실행한다."""
     parser = build_parser()
     args = parser.parse_args(argv)
     _setup_logging(getattr(args, "verbose", False))

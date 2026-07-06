@@ -1,5 +1,3 @@
-"""마이홈 API 응답 파서 + 지역코드 테스트 (네트워크 불필요)."""
-
 from __future__ import annotations
 
 from zipdao_crawlers.sources._myhome_regions import REGIONS

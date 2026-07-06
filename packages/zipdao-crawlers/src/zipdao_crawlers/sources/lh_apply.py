@@ -1,17 +1,4 @@
-"""LH청약플러스 — 공공데이터포털 분양임대공고문 API 소스.
-
-LH는 robots.txt가 첨부 다운로드 endpoint(/lhapply/lhFile.do)를 Disallow 하므로
-웹 크롤링 대신 **공식 채널인 공공데이터 API**로 공고 메타데이터를 수집한다.
-
-서비스: 한국토지주택공사_분양임대공고문 조회 (data.go.kr 15058530)
-  엔드포인트: http://apis.data.go.kr/B552555/lhLeaseNoticeInfo1/lhLeaseNoticeInfo1
-  필수: ServiceKey, PG_SZ, PAGE, PAN_NT_ST_DT(공고게시일 YYYY.MM.DD), CLSG_DT(공고마감일)
-  선택: UPP_AIS_TP_CD(유형), CNP_CD(지역), PAN_NM, PAN_SS
-  응답: [{"dsSch":[...]}, {"dsList":[{PAN_ID,PAN_NM,UPP_AIS_TP_NM,CNP_CD_NM,PAN_SS,
-        PAN_NT_ST_DT,CLSG_DT,DTL_URL,ALL_CNT,...}], "resHeader":[{SS_CODE}]}]
-
-원본 공고문 PDF/HWP는 robots 제한으로 수집하지 않는다(메타데이터 + DTL_URL 만).
-"""
+"""LH청약플러스 공공데이터포털 분양임대공고문 API 크롤러 소스."""
 
 from __future__ import annotations
 
@@ -25,7 +12,6 @@ from zipdao_crawlers.base import BaseCrawler
 LIST_EP = "http://apis.data.go.kr/B552555/lhLeaseNoticeInfo1/lhLeaseNoticeInfo1"
 PG_SZ = 100
 
-# 주거 관련 상위공고유형 (01 토지·22 상가는 제외)
 HOUSING_TYPES: list[tuple[str, str]] = [
     ("05", "분양주택"),
     ("06", "임대주택"),
@@ -35,6 +21,7 @@ HOUSING_TYPES: list[tuple[str, str]] = [
 
 
 def normalize(item: dict) -> dict:
+    """LH 공고 item 을 정규화 블록으로 변환한다."""
     return {
         "supplyType": item.get("AIS_TP_CD_NM") or item.get("UPP_AIS_TP_NM") or None,
         "depositKRW": None,
@@ -48,6 +35,8 @@ def normalize(item: dict) -> dict:
 
 
 class LhApplyCrawler(BaseCrawler):
+    """LH청약플러스 공공데이터 API 로 공고를 수집하는 크롤러."""
+
     key = "lh_apply"
     name = "LH청약플러스(공공데이터 API)"
     base_url = "https://apply.lh.or.kr"
@@ -61,6 +50,7 @@ class LhApplyCrawler(BaseCrawler):
             )
 
     def iter_notices(self, since: int | None, until: int | None) -> Iterator[NoticeStub]:
+        """주택유형별로 공고 요약을 순회한다."""
         start = f"{since or 2000}.01.01"
         close = f"{until or 2099}.12.31"
         for code, type_name in HOUSING_TYPES:
@@ -109,13 +99,14 @@ class LhApplyCrawler(BaseCrawler):
 
     @staticmethod
     def parse_list(data) -> tuple[list[dict], int]:
-        """LH 응답 [{dsSch}, {dsList, resHeader}] 에서 (행 목록, 전체건수) 추출. 순수 함수."""
+        """LH 응답에서 (행 목록, 전체건수)를 추출한다."""
         block = next((x for x in data if isinstance(x, dict) and "dsList" in x), None)
         rows = block.get("dsList", []) if block else []
         all_cnt = int(rows[0].get("ALL_CNT") or 0) if rows else 0
         return rows, all_cnt
 
     def fetch_detail(self, stub: NoticeStub) -> Notice:
+        """공고 raw 데이터를 정규화해 Notice 를 만든다."""
         raw = dict(stub.extra)
         raw["normalized"] = normalize(raw)
         return Notice(

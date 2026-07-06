@@ -1,15 +1,8 @@
-"""소스별 raw → 표준 정규화 블록(raw["normalized"]).
-
-서빙 API(zipdao-api)는 보증금·월세·면적·접수일·공급유형을 manifest 의 raw["normalized"]
-에서 읽는다. 신규 수집은 크롤러가 이 블록을 채우고, 이미 디스크에 있는 manifest 는
-`zipdao-crawl normalize` 백필이 같은 함수를 적용한다. 소스마다 raw 형태가 다르므로
-source 키로 디스패치한다.
-
-myhome 은 두 형태가 공존한다: HWSPR04 단지·세대(면적·보증금·월세 있음, 접수일 없음)와
-HWSPR02 모집공고(보증금·월세·접수일 있음, 면적 없음). 디스크 데이터는 HWSPR04 형태다.
-"""
+"""소스별 raw 데이터를 표준 정규화 블록(raw['normalized'])으로 변환한다."""
 
 from __future__ import annotations
+
+import re
 
 from zipdao_core.dates import to_iso_date
 
@@ -33,10 +26,18 @@ def _won(value: object) -> int | None:
     return n if n and n > 0 else None
 
 
+_NUM_RE = re.compile(r"\s*(-?\d+(?:\.\d+)?)")
+
+
 def _area(value: object) -> float | None:
-    try:
-        f = float(value)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
+    if isinstance(value, (int, float)):
+        f = float(value)
+    elif isinstance(value, str):
+        match = _NUM_RE.match(value)
+        if not match:
+            return None
+        f = float(match.group(1))
+    else:
         return None
     return round(f, 2) if f > 0 else None
 
@@ -49,6 +50,7 @@ def _first(*values: object) -> object | None:
 
 
 def normalize_myhome(raw: dict) -> dict:
+    """마이홈 raw 데이터를 정규화 블록으로 변환한다."""
     if "item" in raw:
         from zipdao_crawlers.sources.myhome import normalize as normalize_hwspr02
 
@@ -76,6 +78,7 @@ def normalize_myhome(raw: dict) -> dict:
 
 
 def normalize_applyhome(raw: dict) -> dict:
+    """청약홈 raw 데이터를 정규화 블록으로 변환한다."""
     supply = _first(raw.get("RENT_SECD_NM"), raw.get("HOUSE_SECD_NM"))
     return {
         "supplyType": supply,
@@ -90,12 +93,14 @@ def normalize_applyhome(raw: dict) -> dict:
 
 
 def normalize_lh(raw: dict) -> dict:
+    """LH 청약플러스 raw 데이터를 정규화 블록으로 변환한다."""
     from zipdao_crawlers.sources.lh_apply import normalize as normalize_lh_item
 
     return normalize_lh_item(raw)
 
 
 def normalize_youth(raw: dict) -> dict:
+    """청년안심주택 raw 데이터를 정규화 블록으로 변환한다."""
     return {
         "supplyType": None,
         "depositKRW": None,
@@ -117,5 +122,6 @@ _DISPATCH = {
 
 
 def normalize_for(source: str, raw: dict) -> dict:
+    """소스 키에 맞는 정규화 함수로 raw 데이터를 변환한다."""
     fn = _DISPATCH.get(source)
     return fn(raw) if fn else {}

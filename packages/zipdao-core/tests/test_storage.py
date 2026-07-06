@@ -1,5 +1,3 @@
-"""Storage 레이어 단위 테스트 (라이브 사이트 불필요)."""
-
 from __future__ import annotations
 
 from zipdao_core.models import AssetKind, Attachment, Notice

@@ -1,16 +1,4 @@
-"""청약홈(한국부동산원) — 공공데이터 odcloud API 소스.
-
-서비스: 한국부동산원_청약홈 분양정보 조회 (data.go.kr 15098547)
-공공데이터활용지원센터 자동변환 API(odcloud) 형식:
-  GET https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/getAPTLttotPblancDetail
-      ?serviceKey=..&page=1&perPage=100
-  응답: {"data":[{PBLANC_NO,HOUSE_NM,RCRIT_PBLANC_DE,RCEPT_BGNDE/ENDDE,
-        HOUSE_SECD_NM,RENT_SECD_NM,SUBSCRPT_AREA_CODE_NM,PBLANC_URL,...}],
-        "totalCount":N, "page":.., "perPage":..}
-
-실측: APT 분양정보 2804건, 2020~2026(최신순 정렬). LH와 달리 5년+ 이력 제공.
-원본 PDF는 청약홈 사이트(SPA)라 메타데이터+PBLANC_URL 까지만 수집.
-"""
+"""청약홈(한국부동산원) odcloud 공공데이터 API 크롤러 소스."""
 
 from __future__ import annotations
 
@@ -29,6 +17,8 @@ PER_PAGE = 100
 
 
 class ApplyhomeCrawler(BaseCrawler):
+    """청약홈 odcloud API 로 공고를 수집하는 크롤러."""
+
     key = "applyhome"
     name = "청약홈(공공데이터 API)"
     base_url = "https://www.applyhome.co.kr"
@@ -42,6 +32,7 @@ class ApplyhomeCrawler(BaseCrawler):
             )
 
     def iter_notices(self, since: int | None, until: int | None) -> Iterator[NoticeStub]:
+        """odcloud API 를 페이지 순회하며 공고 요약을 만든다."""
         page = 1
         while True:
             rows, total = self._fetch_page(page)
@@ -55,7 +46,7 @@ class ApplyhomeCrawler(BaseCrawler):
                     if until is not None and year > until:
                         continue
                     if since is not None and year < since:
-                        stop = True  # 최신순 정렬 → since 미만이면 이후 전부 과거
+                        stop = True
                         continue
                 pan_no = str(r.get("PBLANC_NO") or r.get("HOUSE_MANAGE_NO") or "").strip()
                 if not pan_no:
@@ -85,7 +76,7 @@ class ApplyhomeCrawler(BaseCrawler):
 
     @staticmethod
     def parse_page(data) -> tuple[list[dict], int]:
-        """odcloud 응답에서 (행 목록, 전체건수) 추출. 순수 함수."""
+        """odcloud 응답에서 (행 목록, 전체건수)를 추출한다."""
         if not isinstance(data, dict):
             return [], 0
         rows = data.get("data") or []
@@ -93,6 +84,7 @@ class ApplyhomeCrawler(BaseCrawler):
         return rows, total
 
     def fetch_detail(self, stub: NoticeStub) -> Notice:
+        """공고 raw 데이터를 정규화해 Notice 를 만든다."""
         raw = dict(stub.extra)
         raw["normalized"] = normalize_applyhome(raw)
         return Notice(

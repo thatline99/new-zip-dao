@@ -1,5 +1,3 @@
-"""to_iso_date 정규화 테스트."""
-
 from __future__ import annotations
 
 from zipdao_core.dates import to_iso_date
@@ -33,3 +31,12 @@ def test_empty_and_none():
     assert to_iso_date(None) is None
     assert to_iso_date("") is None
     assert to_iso_date("  ") is None
+
+
+def test_zero_pads_single_digit_month_day():
+    assert to_iso_date("2026.6.8") == "2026-06-08"
+    assert to_iso_date("2026-6-8") == "2026-06-08"
+
+
+def test_rejects_non_date_text():
+    assert to_iso_date("미정") is None

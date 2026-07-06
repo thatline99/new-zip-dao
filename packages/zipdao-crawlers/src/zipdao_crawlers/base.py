@@ -1,12 +1,4 @@
-"""크롤러 베이스 추상화 + 수집 엔진.
-
-사이트별 크롤러는 `BaseCrawler`를 상속해 두 가지만 구현하면 된다:
-
-    iter_notices(since, until)  →  NoticeStub 목록(목록/검색 페이지에서)
-    fetch_detail(stub)          →  Notice (상세 + 첨부 URL 채움)
-
-다운로드/체크섬/manifest 기록/멱등 스킵은 `CrawlEngine`이 공통 처리한다.
-"""
+"""크롤러 베이스 추상화와 수집 엔진(다운로드·체크섬·manifest 기록)."""
 
 from __future__ import annotations
 
@@ -24,11 +16,10 @@ logger = logging.getLogger("zipdao.crawl")
 
 
 class BaseCrawler(ABC):
-    #: 레지스트리 키와 동일한 소스 식별자 (저장 경로에 사용)
+    """사이트별 크롤러가 상속하는 베이스 클래스."""
+
     key: str = ""
-    #: 사람이 읽는 이름
     name: str = ""
-    #: 목록/검색 시작 URL
     base_url: str = ""
 
     def __init__(self, http: HttpClient) -> None:
@@ -41,12 +32,14 @@ class BaseCrawler(ABC):
 
     @abstractmethod
     def fetch_detail(self, stub: NoticeStub) -> Notice:
-        """상세 페이지를 받아 첨부/이미지 URL이 채워진 Notice를 만든다."""
+        """상세 페이지를 받아 첨부/이미지 URL이 채워진 Notice 를 만든다."""
         raise NotImplementedError
 
 
 @dataclass
 class CrawlStats:
+    """한 소스 수집 실행 결과 통계."""
+
     source: str
     notices_seen: int = 0
     notices_new: int = 0
@@ -63,6 +56,8 @@ def _filename_from_url(url: str) -> str:
 
 
 class CrawlEngine:
+    """크롤러를 구동해 다운로드·저장·중복 스킵을 처리하는 엔진."""
+
     def __init__(self, crawler: BaseCrawler, storage: Storage) -> None:
         self.crawler = crawler
         self.storage = storage
@@ -75,6 +70,7 @@ class CrawlEngine:
         limit: int | None = None,
         force: bool = False,
     ) -> CrawlStats:
+        """크롤러를 실행해 신규 공고를 수집하고 통계를 반환한다."""
         stats = CrawlStats(source=self.crawler.key)
         for stub in self.crawler.iter_notices(since, until):
             stats.notices_seen += 1
@@ -86,7 +82,7 @@ class CrawlEngine:
             try:
                 self._collect_one(stub, stats)
                 stats.notices_new += 1
-            except Exception as exc:  # noqa: BLE001 — 한 건 실패가 전체를 막지 않도록
+            except Exception as exc:
                 msg = f"{stub.notice_id}: {exc}"
                 stats.errors.append(msg)
                 logger.exception("공고 수집 실패: %s", msg)
@@ -99,7 +95,6 @@ class CrawlEngine:
         year = (notice.posted_date or "")[:4] or None
         ndir = self.storage.notice_dir(notice.source, notice.notice_id, year)
 
-        # 크롤러가 raw["_detail_html"] 로 넘긴 상세 스냅샷 저장(있으면).
         detail_html = notice.raw.pop("_detail_html", None)
         if detail_html:
             notice.detail_html_path = self.storage.save_detail_html(ndir, detail_html)
@@ -113,7 +108,7 @@ class CrawlEngine:
                 data = self.crawler.http.get(att.url).content
                 self.storage.save_asset(ndir, att, data)
                 stats.assets_downloaded += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 att.note = f"download_failed: {exc}"
                 stats.assets_failed += 1
                 logger.warning("첨부 다운로드 실패 %s — %s", att.url, exc)

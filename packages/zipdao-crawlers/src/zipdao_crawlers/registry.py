@@ -1,9 +1,4 @@
-"""소스(공고 사이트) 레지스트리.
-
-문서(한국 주택 공고 사이트 분류)에 정리된 모든 출처를 선언적으로 등록한다.
-`crawler`가 None이면 아직 사이트별 구현(셀렉터/엔드포인트)이 채워지지 않은 상태로,
-실측(probing) 후 sources/ 아래에 구현체를 추가하고 여기 연결한다.
-"""
+"""소스(공고 사이트) 레지스트리를 선언적으로 등록한다."""
 
 from __future__ import annotations
 
@@ -18,6 +13,8 @@ from zipdao_crawlers.sources.youth_seoul import YouthSeoulCrawler
 
 @dataclass(frozen=True)
 class SourceInfo:
+    """소스(사이트) 한 곳의 메타데이터와 크롤러 연결 정보."""
+
     key: str
     name: str
     category: str
@@ -27,16 +24,15 @@ class SourceInfo:
 
     @property
     def implemented(self) -> bool:
+        """크롤러 구현체가 연결되어 있는지 여부."""
         return self.crawler is not None
 
 
-# 카테고리 라벨
 PORTAL = "전국 통합 청약 포털"
 LOCAL = "지역 도시·개발공사"
 PRIVATE = "민간임대·공공지원 통합"
 
 SOURCES: list[SourceInfo] = [
-    # ── 전국 통합 청약 포털 (핵심) ──
     SourceInfo(
         key="lh_apply",
         name="LH청약플러스",
@@ -68,7 +64,6 @@ SOURCES: list[SourceInfo] = [
         notes="서울시 공동체주택플랫폼. 청년안심주택 민간임대 공고. (bbsListJson AJAX + view.do 첨부)",
         crawler=YouthSeoulCrawler,
     ),
-    # ── 지역 도시·개발공사 ──
     SourceInfo(
         key="gh",
         name="경기주택도시공사(GH)",
@@ -97,7 +92,6 @@ SOURCES: list[SourceInfo] = [
         base_url="https://www.gndc.co.kr",
         notes="거북이집 셰어하우스 등.",
     ),
-    # ── 민간임대·공공지원 통합 ──
     SourceInfo(
         key="myhome",
         name="마이홈포털",
@@ -112,10 +106,12 @@ _BY_KEY = {s.key: s for s in SOURCES}
 
 
 def iter_sources() -> list[SourceInfo]:
+    """등록된 전체 소스 목록을 반환한다."""
     return list(SOURCES)
 
 
 def get_source(key: str) -> SourceInfo:
+    """key 에 해당하는 소스 정보를 찾는다. 없으면 KeyError."""
     try:
         return _BY_KEY[key]
     except KeyError:

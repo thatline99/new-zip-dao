@@ -1,3 +1,5 @@
+"""manifest 를 로드해 검색/추천/QA 를 제공하는 인메모리 공고 저장소."""
+
 from __future__ import annotations
 
 import json
@@ -34,6 +36,7 @@ def _is_non_housing(supply_type: str | None) -> bool:
 
 
 def compute_status(apply_start: str | None, apply_end: str | None, today: str) -> str:
+    """접수 시작/종료일과 오늘 날짜로 공고 상태를 계산한다."""
     if apply_end and apply_end < today:
         return "마감"
     if apply_start and apply_start > today:
@@ -44,6 +47,7 @@ def compute_status(apply_start: str | None, apply_end: str | None, today: str) -
 
 
 def to_detail(notice: Notice, today: str) -> NoticeDetail:
+    """Notice 를 API 응답용 NoticeDetail 로 변환한다."""
     n = _normalized(notice)
     apply_start = n.get("applyStart")
     apply_end = n.get("applyEnd")
@@ -72,6 +76,7 @@ def to_detail(notice: Notice, today: str) -> NoticeDetail:
 
 
 def to_summary(detail: NoticeDetail, today: str) -> NoticeSummary:
+    """NoticeDetail 을 상태 갱신 후 NoticeSummary 로 축약한다."""
     data = detail.model_dump()
     data["status"] = compute_status(detail.applyStart, detail.applyEnd, today)
     return NoticeSummary.model_validate(data)
@@ -118,6 +123,8 @@ def _canonicalize_region(s: str) -> str:
 
 
 class NoticeStore:
+    """raw manifest 를 읽어 검색/추천/QA 를 제공하는 저장소."""
+
     def __init__(self, raw_dir: Path, today: str | None = None) -> None:
         self.raw_dir = Path(raw_dir)
         self._today_override = today
@@ -128,6 +135,7 @@ class NoticeStore:
         return self._today_override or date.today().isoformat()
 
     def reload(self) -> None:
+        """raw 디렉터리의 manifest 를 다시 읽어 항목을 갱신한다."""
         today = self._today()
         loaded: list[tuple[NoticeDetail, str | None, str | None]] = []
         if self.raw_dir.exists():
@@ -155,9 +163,11 @@ class NoticeStore:
         self._items = items
 
     def collected_sources(self) -> set[str]:
+        """현재 로드된 항목들의 소스 키 집합을 반환한다."""
         return {d.source for d in self._items}
 
     def get(self, source: str, notice_id: str) -> NoticeDetail | None:
+        """source/notice_id 로 공고 상세를 찾는다(상태는 즉시 갱신)."""
         today = self._today()
         for d in self._items:
             if d.source == source and d.noticeId == notice_id:
@@ -178,6 +188,7 @@ class NoticeStore:
         status: str | None,
         limit: int,
     ) -> NoticeList:
+        """조건(검색어·지역·공급유형·기간·상태)에 맞는 공고를 검색한다."""
         today = self._today()
         lo = _expand_since(since)
         hi = _expand_until(until)
@@ -206,6 +217,7 @@ class NoticeStore:
         return NoticeList(total=len(matches), items=matches[:limit])
 
     def recommend(self, req: RecommendRequest) -> NoticeList:
+        """조건에 맞춰 점수를 매겨 공고를 추천한다."""
         today = self._today()
         want = req.status if req.status else "접수중"
         scored: list[tuple[int, NoticeDetail]] = []
@@ -245,6 +257,7 @@ class NoticeStore:
         return score
 
     def relevant_to_question(self, question: str, limit: int) -> NoticeList:
+        """질문 토큰과 겹치는 공고를 점수순으로 찾는다."""
         today = self._today()
         tokens = {t for t in question.lower().split() if t}
         ranked: list[tuple[int, int, NoticeDetail]] = []

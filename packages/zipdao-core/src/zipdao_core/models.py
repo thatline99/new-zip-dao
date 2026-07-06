@@ -1,8 +1,4 @@
-"""수집 데이터 모델.
-
-표준 라이브러리 dataclass 기반(의존성 최소화). 모든 모델은 `to_dict`/`from_dict`로
-manifest.json 직렬화를 지원한다.
-"""
+"""수집 데이터의 dataclass 기반 모델."""
 
 from __future__ import annotations
 
@@ -22,6 +18,7 @@ class AssetKind(str, Enum):
 
     @classmethod
     def from_filename(cls, name: str) -> "AssetKind":
+        """파일명 확장자로 AssetKind 를 추정한다."""
         ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
         mapping = {
             "pdf": cls.PDF,
@@ -48,10 +45,7 @@ class AssetKind(str, Enum):
 
 @dataclass
 class Attachment:
-    """공고 첨부/이미지 한 건.
-
-    `url`은 수집 시점에 채워지고, 다운로드 후 `local_path`·`sha256`·`bytes`가 채워진다.
-    """
+    """공고 첨부/이미지 한 건."""
 
     url: str
     filename: str
@@ -63,12 +57,14 @@ class Attachment:
     note: str = ""
 
     def to_dict(self) -> dict:
+        """dict(JSON 직렬화용)으로 변환한다."""
         d = asdict(self)
         d["kind"] = self.kind.value
         return d
 
     @classmethod
     def from_dict(cls, d: dict) -> "Attachment":
+        """dict 로부터 Attachment 를 만든다."""
         d = dict(d)
         if "kind" in d and d["kind"] is not None:
             d["kind"] = AssetKind(d["kind"])
@@ -82,7 +78,7 @@ class NoticeStub:
     notice_id: str
     title: str
     detail_url: str
-    posted_date: str | None = None  # ISO 8601 (YYYY-MM-DD)
+    posted_date: str | None = None
     category: str | None = None
     region: str | None = None
     extra: dict = field(default_factory=dict)
@@ -105,12 +101,14 @@ class Notice:
     crawled_at: str | None = None
 
     def to_dict(self) -> dict:
+        """dict(JSON 직렬화용)으로 변환한다."""
         d = asdict(self)
         d["attachments"] = [a.to_dict() for a in self.attachments]
         return d
 
     @classmethod
     def from_dict(cls, d: dict) -> "Notice":
+        """dict 로부터 Notice 를 만든다."""
         d = dict(d)
         d["attachments"] = [Attachment.from_dict(a) for a in d.get("attachments", [])]
         return cls(**d)

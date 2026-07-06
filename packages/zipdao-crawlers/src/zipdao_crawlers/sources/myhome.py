@@ -1,11 +1,4 @@
-"""마이홈포털 공공임대 입주자모집공고 — 공공데이터 API (data.go.kr 1613000).
-
-오퍼레이션: HWSPR02/rsdtRcritNtcList (공공임대 모집공고 목록)
-필수 파라미터: serviceKey, brtcCode(시도 2자리), signguCode(시군구 3자리)
-응답 item 필드: pblancId, pblancNm, suplyTyNm, rentGtn(보증금), mtRntchrg(월세),
-brtcNm, signguNm, fullAdres, rcritPblancDe, beginDe, endDe, pcUrl, url.
-면적은 이 오퍼레이션에 없음(전용면적은 HWSPR04에 있으나 미인가).
-"""
+"""마이홈포털 공공임대 입주자모집공고 공공데이터 API 크롤러 소스."""
 
 from __future__ import annotations
 
@@ -43,6 +36,7 @@ def _lh_pan_id(url) -> str | None:
 
 
 def normalize(item: dict) -> dict:
+    """마이홈 공고 item 을 정규화 블록으로 변환한다."""
     return {
         "supplyType": item.get("suplyTyNm") or None,
         "depositKRW": _won(item.get("rentGtn")),
@@ -58,6 +52,8 @@ def normalize(item: dict) -> dict:
 
 
 class MyhomeCrawler(BaseCrawler):
+    """마이홈 공공데이터 API 로 공고를 수집하는 크롤러."""
+
     key = "myhome"
     name = "마이홈 공공임대 입주자모집공고(공공데이터 API)"
     base_url = "https://www.myhome.go.kr"
@@ -71,6 +67,7 @@ class MyhomeCrawler(BaseCrawler):
             )
 
     def iter_notices(self, since: int | None, until: int | None) -> Iterator[NoticeStub]:
+        """지역코드별로 공고 요약을 순회한다."""
         for brtc, signgu, sido_nm, sgg_nm in REGIONS:
             for item in self._fetch_region(brtc, signgu):
                 posted = _iso(item.get("rcritPblancDe"))
@@ -114,6 +111,7 @@ class MyhomeCrawler(BaseCrawler):
 
     @staticmethod
     def parse_items(data) -> tuple[list[dict], int]:
+        """마이홈 응답에서 (항목 목록, 전체건수)를 추출한다."""
         if not isinstance(data, dict):
             return [], 0
         body = data.get("response", {}).get("body") or {}
@@ -124,6 +122,7 @@ class MyhomeCrawler(BaseCrawler):
         return items, total
 
     def fetch_detail(self, stub: NoticeStub) -> Notice:
+        """공고 raw 데이터를 정규화해 Notice 를 만든다."""
         item = stub.extra["item"]
         return Notice(
             source=self.key,

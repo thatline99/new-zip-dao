@@ -1,5 +1,3 @@
-"""LH API 응답 파서 단위 테스트 (네트워크 불필요)."""
-
 from __future__ import annotations
 
 from zipdao_crawlers.sources.lh_apply import LhApplyCrawler
