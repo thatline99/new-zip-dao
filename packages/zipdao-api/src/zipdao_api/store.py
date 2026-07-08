@@ -122,6 +122,24 @@ def _canonicalize_region(s: str) -> str:
     return s
 
 
+_STATUS_RANK = {"접수중": 0, "예정": 1, "미정": 2, "마감": 3}
+
+
+def _status_rank(summary: NoticeSummary) -> int:
+    return _STATUS_RANK.get(summary.status, 9)
+
+
+def _sort_summaries(items: list[NoticeSummary], sort: str | None) -> list[NoticeSummary]:
+    """정렬 옵션에 따라 공고를 정렬한다(기본: 접수중 먼저, 그 안에서 최신순)."""
+    if sort == "latest":
+        return sorted(items, key=lambda d: d.postedDate or "", reverse=True)
+    if sort == "deadline":
+        by_end = sorted(items, key=lambda d: d.applyEnd or "9999-99-99")
+        return sorted(by_end, key=_status_rank)
+    by_posted = sorted(items, key=lambda d: d.postedDate or "", reverse=True)
+    return sorted(by_posted, key=_status_rank)
+
+
 class NoticeStore:
     """raw manifest 를 읽어 검색/추천/QA 를 제공하는 저장소."""
 
@@ -187,6 +205,8 @@ class NoticeStore:
         until: str | None,
         status: str | None,
         limit: int,
+        offset: int = 0,
+        sort: str | None = None,
     ) -> NoticeList:
         """조건(검색어·지역·공급유형·기간·상태)에 맞는 공고를 검색한다."""
         today = self._today()
@@ -214,7 +234,8 @@ class NoticeStore:
                 if needle not in hay:
                     continue
             matches.append(to_summary(d, today))
-        return NoticeList(total=len(matches), items=matches[:limit])
+        ordered = _sort_summaries(matches, sort)
+        return NoticeList(total=len(ordered), items=ordered[offset : offset + limit])
 
     def recommend(self, req: RecommendRequest) -> NoticeList:
         """조건에 맞춰 점수를 매겨 공고를 추천한다."""

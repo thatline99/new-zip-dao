@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 NoticeStatus = Literal["접수중", "마감", "예정", "미정"]
+SortOrder = Literal["latest", "deadline"]
 
 
 class Attachment(BaseModel):

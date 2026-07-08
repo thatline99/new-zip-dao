@@ -453,3 +453,106 @@ def test_cross_source_drops_full_lh_chain(tmp_path: Path) -> None:
     c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
     ids = sorted(i["noticeId"] for i in c.get("/notices", params={"limit": 10}).json()["items"])
     assert ids == ["MNEW"]
+
+
+def _dated(notice_id: str, posted: str, normalized: dict) -> dict:
+    return {
+        "source": "myhome",
+        "notice_id": notice_id,
+        "title": f"공고 {notice_id}",
+        "detail_url": "u",
+        "posted_date": posted,
+        "category": "행복주택",
+        "region": "경기도",
+        "attachments": [],
+        "raw": {"normalized": {"supplyType": "행복주택", **normalized}},
+    }
+
+
+def test_search_default_sort_open_then_newest(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(raw, "myhome", "2026", "CLOSED_OLD", _dated("CLOSED_OLD", "2026-04-01", {"applyEnd": "2026-05-01"}))
+    _write(
+        raw, "myhome", "2026", "OPEN_OLD",
+        _dated("OPEN_OLD", "2026-06-02", {"applyStart": "2026-06-01", "applyEnd": "2026-07-31"}),
+    )
+    _write(
+        raw, "myhome", "2026", "OPEN_NEW",
+        _dated("OPEN_NEW", "2026-06-20", {"applyStart": "2026-06-10", "applyEnd": "2026-07-31"}),
+    )
+    _write(
+        raw, "myhome", "2026", "UPCOMING",
+        _dated("UPCOMING", "2026-06-15", {"applyStart": "2026-12-01", "applyEnd": "2026-12-31"}),
+    )
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    ids = [i["noticeId"] for i in c.get("/notices", params={"limit": 10}).json()["items"]]
+    assert ids == ["OPEN_NEW", "OPEN_OLD", "UPCOMING", "CLOSED_OLD"]
+
+
+def test_search_offset_paginates(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    for i in range(3):
+        _write(
+            raw, "myhome", "2026", f"N{i}",
+            _dated(f"N{i}", f"2026-06-0{i + 1}", {"applyStart": "2026-06-01", "applyEnd": "2026-07-31"}),
+        )
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    page1 = c.get("/notices", params={"limit": 1, "offset": 0}).json()
+    page2 = c.get("/notices", params={"limit": 1, "offset": 1}).json()
+    assert page1["total"] == 3 and page2["total"] == 3
+    assert page1["items"][0]["noticeId"] == "N2"
+    assert page2["items"][0]["noticeId"] == "N1"
+
+
+def test_search_limit_over_200_is_clamped_not_rejected(tmp_path: Path) -> None:
+    c = _client(tmp_path)
+    r = c.get("/notices", params={"limit": 5000})
+    assert r.status_code == 200
+    assert r.json()["total"] == 2
+
+
+def test_search_sort_latest_ignores_status(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(raw, "myhome", "2026", "CLOSED_NEW", _dated("CLOSED_NEW", "2026-06-25", {"applyEnd": "2026-05-01"}))
+    _write(
+        raw, "myhome", "2026", "OPEN_OLD",
+        _dated("OPEN_OLD", "2026-06-01", {"applyStart": "2026-06-01", "applyEnd": "2026-07-31"}),
+    )
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    default = [i["noticeId"] for i in c.get("/notices", params={"limit": 10}).json()["items"]]
+    assert default == ["OPEN_OLD", "CLOSED_NEW"]
+    latest = [i["noticeId"] for i in c.get("/notices", params={"limit": 10, "sort": "latest"}).json()["items"]]
+    assert latest == ["CLOSED_NEW", "OPEN_OLD"]
+
+
+def test_search_sort_deadline_open_first_soonest(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(
+        raw, "myhome", "2026", "OPEN_LATER",
+        _dated("OPEN_LATER", "2026-06-10", {"applyStart": "2026-06-01", "applyEnd": "2026-08-31"}),
+    )
+    _write(
+        raw, "myhome", "2026", "OPEN_SOON",
+        _dated("OPEN_SOON", "2026-06-05", {"applyStart": "2026-06-01", "applyEnd": "2026-07-05"}),
+    )
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    ids = [i["noticeId"] for i in c.get("/notices", params={"limit": 10, "sort": "deadline"}).json()["items"]]
+    assert ids == ["OPEN_SOON", "OPEN_LATER"]
+
+
+def test_invalid_sort_is_rejected(tmp_path: Path) -> None:
+    c = _client(tmp_path)
+    assert c.get("/notices", params={"limit": 10, "sort": "bogus"}).status_code == 422
+
+
+def test_search_offset_past_end_keeps_total(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    for i in range(3):
+        _write(
+            raw, "myhome", "2026", f"N{i}",
+            _dated(f"N{i}", f"2026-06-0{i + 1}", {"applyStart": "2026-06-01", "applyEnd": "2026-07-31"}),
+        )
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    r = c.get("/notices", params={"limit": 5, "offset": 100}).json()
+    assert r["total"] == 3
+    assert r["items"] == []

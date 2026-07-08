@@ -13,6 +13,7 @@ from zipdao_api.schema import (
     NoticeStatus,
     QaRequest,
     RecommendRequest,
+    SortOrder,
     SourceInfo,
 )
 from zipdao_api.store import NoticeStore
@@ -33,7 +34,8 @@ def create_app(store: NoticeStore) -> FastAPI:
 
     @app.get("/notices", response_model=NoticeList)
     def search_notices(
-        limit: int = Query(ge=1, le=200),
+        limit: int = Query(200, ge=1),
+        offset: int = Query(0, ge=0),
         q: str | None = None,
         region: str | None = None,
         supplyType: str | None = None,
@@ -41,6 +43,7 @@ def create_app(store: NoticeStore) -> FastAPI:
         since: str | None = None,
         until: str | None = None,
         status: NoticeStatus | None = None,
+        sort: SortOrder | None = None,
     ) -> NoticeList:
         return store.search(
             q=q,
@@ -50,7 +53,9 @@ def create_app(store: NoticeStore) -> FastAPI:
             since=since,
             until=until,
             status=status,
-            limit=limit,
+            limit=min(limit, 200),
+            offset=offset,
+            sort=sort,
         )
 
     @app.get("/notices/{source}/{notice_id}", response_model=NoticeDetail)
