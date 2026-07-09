@@ -47,10 +47,11 @@ class NoticeDetail(NoticeSummary):
 
 
 class NoticeList(BaseModel):
-    """공고 목록 응답(총건수 + 항목)."""
+    """공고 목록 응답(총건수 + 항목 + 데이터 갱신 시각)."""
 
     total: int
     items: list[NoticeSummary]
+    lastUpdated: str | None = None
 
 
 class SourceInfo(BaseModel):

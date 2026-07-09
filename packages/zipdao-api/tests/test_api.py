@@ -556,3 +556,18 @@ def test_search_offset_past_end_keeps_total(tmp_path: Path) -> None:
     r = c.get("/notices", params={"limit": 5, "offset": 100}).json()
     assert r["total"] == 3
     assert r["items"] == []
+
+
+def test_last_updated_from_crawled_at(tmp_path: Path) -> None:
+    c = _client(tmp_path)
+    r = c.get("/notices", params={"limit": 10}).json()
+    assert r["lastUpdated"] == "2026-06-24T05:00:00+00:00"
+
+
+def test_last_updated_prefers_stamp_file(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(raw, "myhome", "2026", "OPEN", _notice("OPEN", {"applyEnd": "2026-07-31"}))
+    (tmp_path / "last_crawl").write_text("2026-07-09T06:00:00Z\n", encoding="utf-8")
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    r = c.get("/notices", params={"limit": 10}).json()
+    assert r["lastUpdated"] == "2026-07-09T06:00:00Z"

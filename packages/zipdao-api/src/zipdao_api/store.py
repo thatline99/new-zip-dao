@@ -147,6 +147,7 @@ class NoticeStore:
         self.raw_dir = Path(raw_dir)
         self._today_override = today
         self._items: list[NoticeDetail] = []
+        self._last_updated: str | None = None
         self.reload()
 
     def _today(self) -> str:
@@ -179,6 +180,19 @@ class NoticeStore:
                 continue
             items.append(detail)
         self._items = items
+        self._last_updated = self._compute_last_updated(items)
+
+    def _compute_last_updated(self, items: list[NoticeDetail]) -> str | None:
+        """데이터 갱신 시각: 크롤 완료 스탬프(last_crawl) 우선, 없으면 최신 crawledAt."""
+        stamp = self.raw_dir.parent / "last_crawl"
+        try:
+            text = stamp.read_text(encoding="utf-8").strip()
+            if text:
+                return text
+        except OSError:
+            pass
+        stamps = [d.crawledAt for d in items if d.crawledAt]
+        return max(stamps) if stamps else None
 
     def collected_sources(self) -> set[str]:
         """현재 로드된 항목들의 소스 키 집합을 반환한다."""
@@ -235,7 +249,11 @@ class NoticeStore:
                     continue
             matches.append(to_summary(d, today))
         ordered = _sort_summaries(matches, sort)
-        return NoticeList(total=len(ordered), items=ordered[offset : offset + limit])
+        return NoticeList(
+            total=len(ordered),
+            items=ordered[offset : offset + limit],
+            lastUpdated=self._last_updated,
+        )
 
     def recommend(self, req: RecommendRequest) -> NoticeList:
         """조건에 맞춰 점수를 매겨 공고를 추천한다."""
@@ -251,7 +269,7 @@ class NoticeStore:
             scored.append((score, d))
         scored.sort(key=lambda x: x[0], reverse=True)
         items = [to_summary(d, today) for _, d in scored[: req.limit]]
-        return NoticeList(total=len(scored), items=items)
+        return NoticeList(total=len(scored), items=items, lastUpdated=self._last_updated)
 
     @staticmethod
     def _score(d: NoticeDetail, req: RecommendRequest) -> int:
@@ -293,4 +311,4 @@ class NoticeStore:
             ranked.append((score, open_first, d))
         ranked.sort(key=lambda x: (x[0], x[1]), reverse=True)
         items = [to_summary(d, today) for _, _, d in ranked[:limit]]
-        return NoticeList(total=len(ranked), items=items)
+        return NoticeList(total=len(ranked), items=items, lastUpdated=self._last_updated)
