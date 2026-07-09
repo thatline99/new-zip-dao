@@ -110,17 +110,18 @@ class MyhomeCrawler(DataGoKrCrawler):
                     best[notice_id] = stub
         yield from best.values()
 
-    def _fetch_region(self, brtc: str, signgu: str) -> list[dict]:
+    def _fetch_all(self, endpoint: str, brtc: str, signgu: str, rows_per_page: int) -> list[dict]:
+        """지역코드로 endpoint 를 페이지 순회해 전체 행을 모은다."""
         rows: list[dict] = []
         page = 1
         while True:
             resp = self.http.get(
-                LIST_EP,
+                endpoint,
                 params={
                     "serviceKey": self._key,
                     "brtcCode": brtc,
                     "signguCode": signgu,
-                    "numOfRows": NUM_ROWS,
+                    "numOfRows": rows_per_page,
                     "pageNo": page,
                 },
             )
@@ -128,38 +129,21 @@ class MyhomeCrawler(DataGoKrCrawler):
             if not items:
                 break
             rows.extend(items)
-            if page * NUM_ROWS >= total:
+            if page * rows_per_page >= total:
                 break
             page += 1
         return rows
 
+    def _fetch_region(self, brtc: str, signgu: str) -> list[dict]:
+        return self._fetch_all(LIST_EP, brtc, signgu, NUM_ROWS)
+
     def _fetch_complexes(self, brtc: str, signgu: str) -> list[dict]:
         """지역의 임대주택 단지(HWSPR04) 목록을 가져온다. 실패해도 크롤은 계속(빈 목록)."""
-        rows: list[dict] = []
-        page = 1
         try:
-            while True:
-                resp = self.http.get(
-                    COMPLEX_EP,
-                    params={
-                        "serviceKey": self._key,
-                        "brtcCode": brtc,
-                        "signguCode": signgu,
-                        "numOfRows": COMPLEX_ROWS,
-                        "pageNo": page,
-                    },
-                )
-                items, total = self.parse_items(resp.json())
-                if not items:
-                    break
-                rows.extend(items)
-                if page * COMPLEX_ROWS >= total:
-                    break
-                page += 1
+            return self._fetch_all(COMPLEX_EP, brtc, signgu, COMPLEX_ROWS)
         except Exception:
             logger.warning("단지정보(HWSPR04) 조회 실패: brtc=%s signgu=%s", brtc, signgu)
             return []
-        return rows
 
     @staticmethod
     def parse_items(data) -> tuple[list[dict], int]:
