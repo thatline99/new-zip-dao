@@ -126,6 +126,13 @@ def _canonicalize_region(s: str) -> str:
     return s
 
 
+def _haystack(d: NoticeDetail) -> str:
+    """검색 대상 텍스트(제목·지역·분류·공급유형·요약)를 하나로 합친다."""
+    return " ".join(
+        [d.title, d.region or "", d.category or "", d.supplyType or "", d.summary or ""]
+    ).lower()
+
+
 _STATUS_RANK = {"접수중": 0, "예정": 1, "미정": 2, "마감": 3}
 
 
@@ -235,11 +242,12 @@ class NoticeStore:
         lo = _expand_since(since)
         hi = _expand_until(until)
         tokens = q.lower().split() if q else []
+        region_q = _canonicalize_region(region) if region else None
         matches: list[NoticeSummary] = []
         for d in self._items:
             if source and d.source != source:
                 continue
-            if region and _canonicalize_region(region) not in _canonicalize_region(d.region or ""):
+            if region_q and region_q not in _canonicalize_region(d.region or ""):
                 continue
             if supply_type and supply_type not in (d.supplyType or ""):
                 continue
@@ -250,10 +258,7 @@ class NoticeStore:
             if hi and d.postedDate and d.postedDate > hi:
                 continue
             if tokens:
-                hay = " ".join(
-                    [d.title, d.region or "", d.category or "", d.supplyType or "", d.summary or ""]
-                ).lower()
-                if not all(t in hay for t in tokens):
+                if not all(t in _haystack(d) for t in tokens):
                     continue
             matches.append(to_summary(d, today))
         ordered = _sort_summaries(matches, sort)
@@ -267,9 +272,10 @@ class NoticeStore:
         """조건에 맞춰 점수를 매겨 공고를 추천한다."""
         today = self._today()
         want = req.status if req.status else "접수중"
+        region_q = _canonicalize_region(req.region) if req.region else None
         scored: list[tuple[int, NoticeDetail]] = []
         for d in self._items:
-            score = self._score(d, req)
+            score = self._score(d, req, region_q)
             if score < 0:
                 continue
             if want != "전체" and compute_status(d.applyStart, d.applyEnd, today) != want:
@@ -280,9 +286,9 @@ class NoticeStore:
         return NoticeList(total=len(scored), items=items, lastUpdated=self._last_updated)
 
     @staticmethod
-    def _score(d: NoticeDetail, req: RecommendRequest) -> int:
+    def _score(d: NoticeDetail, req: RecommendRequest, region_q: str | None) -> int:
         score = 0
-        if req.region and _canonicalize_region(req.region) not in _canonicalize_region(d.region or ""):
+        if region_q and region_q not in _canonicalize_region(d.region or ""):
             return -1
         budget_set = req.maxDepositKRW is not None or req.maxMonthlyRentKRW is not None
         if budget_set and not (d.depositKRW or d.monthlyRentKRW):
@@ -309,9 +315,7 @@ class NoticeStore:
         tokens = {t for t in question.lower().split() if t}
         ranked: list[tuple[int, int, NoticeDetail]] = []
         for d in self._items:
-            hay = " ".join(
-                [d.title, d.region or "", d.category or "", d.supplyType or "", d.summary or ""]
-            ).lower()
+            hay = _haystack(d)
             score = sum(1 for t in tokens if t in hay)
             if score <= 0:
                 continue
