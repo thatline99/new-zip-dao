@@ -8,6 +8,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from urllib.parse import unquote, urlsplit
 
+from zipdao_core.config import load_settings
 from zipdao_core.http import HttpClient
 from zipdao_core.models import AssetKind, Notice, NoticeStub
 from zipdao_core.storage import Storage
@@ -34,6 +35,19 @@ class BaseCrawler(ABC):
     def fetch_detail(self, stub: NoticeStub) -> Notice:
         """상세 페이지를 받아 첨부/이미지 URL이 채워진 Notice 를 만든다."""
         raise NotImplementedError
+
+
+class DataGoKrCrawler(BaseCrawler):
+    """공공데이터포털(data.go.kr) 인증키를 요구하는 크롤러 베이스."""
+
+    def __init__(self, http: HttpClient) -> None:
+        super().__init__(http)
+        key = load_settings().data_go_kr_service_key
+        if not key:
+            raise RuntimeError(
+                "DATA_GO_KR_SERVICE_KEY 미설정(.env). 공공데이터포털 인증키가 필요합니다."
+            )
+        self._key: str = key
 
 
 @dataclass

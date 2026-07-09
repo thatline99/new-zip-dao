@@ -6,9 +6,8 @@ import logging
 import re
 from collections.abc import Iterator
 
-from zipdao_core.config import load_settings
 from zipdao_core.models import Notice, NoticeStub
-from zipdao_crawlers.base import BaseCrawler
+from zipdao_crawlers.base import DataGoKrCrawler
 from zipdao_crawlers.normalize import _area, _won
 from zipdao_crawlers.sources._myhome_regions import REGIONS
 
@@ -73,20 +72,12 @@ def normalize(item: dict, units: list[dict] | None = None) -> dict:
     }
 
 
-class MyhomeCrawler(BaseCrawler):
+class MyhomeCrawler(DataGoKrCrawler):
     """마이홈 공공데이터 API 로 공고를 수집하는 크롤러."""
 
     key = "myhome"
     name = "마이홈 공공임대 입주자모집공고(공공데이터 API)"
     base_url = "https://www.myhome.go.kr"
-
-    def __init__(self, http) -> None:
-        super().__init__(http)
-        self._key = load_settings().data_go_kr_service_key
-        if not self._key:
-            raise RuntimeError(
-                "DATA_GO_KR_SERVICE_KEY 미설정(.env). 공공데이터포털 인증키가 필요합니다."
-            )
 
     def iter_notices(self, since: int | None, until: int | None) -> Iterator[NoticeStub]:
         """지역코드별로 공고 요약을 순회한다(단지 세대정보를 함께 붙인다).

@@ -4,10 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from zipdao_core.config import load_settings
 from zipdao_core.dates import to_iso_date
 from zipdao_core.models import Notice, NoticeStub
-from zipdao_crawlers.base import BaseCrawler
+from zipdao_crawlers.base import DataGoKrCrawler
 from zipdao_crawlers.normalize import normalize_applyhome
 
 _SVC = "https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1"
@@ -20,20 +19,12 @@ OPERATIONS: list[tuple[str, str]] = [
 PER_PAGE = 100
 
 
-class ApplyhomeCrawler(BaseCrawler):
+class ApplyhomeCrawler(DataGoKrCrawler):
     """청약홈 odcloud API 로 공고를 수집하는 크롤러."""
 
     key = "applyhome"
     name = "청약홈(공공데이터 API)"
     base_url = "https://www.applyhome.co.kr"
-
-    def __init__(self, http) -> None:
-        super().__init__(http)
-        self._key = load_settings().data_go_kr_service_key
-        if not self._key:
-            raise RuntimeError(
-                "DATA_GO_KR_SERVICE_KEY 미설정(.env). 공공데이터포털 인증키가 필요합니다."
-            )
 
     def iter_notices(self, since: int | None, until: int | None) -> Iterator[NoticeStub]:
         """오퍼레이션별로 odcloud API 를 페이지 순회하며 공고 요약을 만든다."""
