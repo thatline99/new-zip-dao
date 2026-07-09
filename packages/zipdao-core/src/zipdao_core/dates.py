@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 KST = timezone(timedelta(hours=9))
 _DATE_RE = re.compile(r"(\d{4})\D+(\d{1,2})\D+(\d{1,2})")

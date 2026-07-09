@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class AssetKind(str, Enum):
+class AssetKind(StrEnum):
     """다운로드 첨부 종류."""
 
     PDF = "pdf"
@@ -17,7 +17,7 @@ class AssetKind(str, Enum):
     OTHER = "other"
 
     @classmethod
-    def from_filename(cls, name: str) -> "AssetKind":
+    def from_filename(cls, name: str) -> AssetKind:
         """파일명 확장자로 AssetKind 를 추정한다."""
         ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
         mapping = {
@@ -63,7 +63,7 @@ class Attachment:
         return d
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Attachment":
+    def from_dict(cls, d: dict) -> Attachment:
         """dict 로부터 Attachment 를 만든다."""
         d = dict(d)
         if "kind" in d and d["kind"] is not None:
@@ -108,7 +108,7 @@ class Notice:
         source: str,
         attachments: list[Attachment] | None = None,
         raw: dict | None = None,
-    ) -> "Notice":
+    ) -> Notice:
         """NoticeStub 의 공통 필드를 옮겨 Notice 를 만든다."""
         return cls(
             source=source,
@@ -129,7 +129,7 @@ class Notice:
         return d
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Notice":
+    def from_dict(cls, d: dict) -> Notice:
         """dict 로부터 Notice 를 만든다."""
         d = dict(d)
         d["attachments"] = [Attachment.from_dict(a) for a in d.get("attachments", [])]

@@ -46,8 +46,12 @@ class YouthSeoulCrawler(BaseCrawler):
             yield from self._iter_board(bbs_id, menu_no, board_name, since, until)
 
     def _iter_board(
-        self, bbs_id: str, menu_no: str, board_name: str,
-        since: int | None, until: int | None,
+        self,
+        bbs_id: str,
+        menu_no: str,
+        board_name: str,
+        since: int | None,
+        until: int | None,
     ) -> Iterator[NoticeStub]:
         page = 1
         referer = f"{BASE}/youth/bbs/{bbs_id}/list.do?menuNo={menu_no}"
@@ -55,9 +59,13 @@ class YouthSeoulCrawler(BaseCrawler):
             resp = self.http.post(
                 LIST_JSON,
                 data={
-                    "bbsId": bbs_id, "pageIndex": page,
-                    "searchAdresGu": "", "searchCondition": "",
-                    "searchKeyword": "", "optn2": "", "optn5": "",
+                    "bbsId": bbs_id,
+                    "pageIndex": page,
+                    "searchAdresGu": "",
+                    "searchCondition": "",
+                    "searchKeyword": "",
+                    "optn2": "",
+                    "optn5": "",
                 },
                 headers={"X-Requested-With": "XMLHttpRequest", "Referer": referer},
             )
@@ -69,9 +77,7 @@ class YouthSeoulCrawler(BaseCrawler):
 
             stop = False
             for r in rows:
-                posted = to_iso_date(
-                    r.get("optn1") or r.get("nttBgnde") or r.get("regDate")
-                )
+                posted = to_iso_date(r.get("optn1") or r.get("nttBgnde") or r.get("regDate"))
                 year = year_of(posted)
                 if year is not None:
                     if until is not None and year > until:
@@ -82,10 +88,7 @@ class YouthSeoulCrawler(BaseCrawler):
                 board_id = str(r.get("boardId") or "").strip()
                 if not board_id:
                     continue
-                detail = (
-                    f"{BASE}/youth/bbs/{bbs_id}/view.do"
-                    f"?boardId={board_id}&menuNo={menu_no}"
-                )
+                detail = f"{BASE}/youth/bbs/{bbs_id}/view.do?boardId={board_id}&menuNo={menu_no}"
                 yield NoticeStub(
                     notice_id=f"{bbs_id}-{board_id}",
                     title=(r.get("nttSj") or "").strip(),
@@ -94,7 +97,9 @@ class YouthSeoulCrawler(BaseCrawler):
                     category=board_name,
                     region="서울",
                     extra={
-                        "bbsId": bbs_id, "menuNo": menu_no, "boardId": board_id,
+                        "bbsId": bbs_id,
+                        "menuNo": menu_no,
+                        "boardId": board_id,
                         "atchFileId": r.get("atchFileId"),
                         "gubun": r.get("optn2"),
                         "applyDate": to_iso_date(r.get("optn4")),

@@ -106,7 +106,10 @@ def test_match_units_pnu_first_then_name():
         {"pnu": "1168010100106530006", "hsmpNm": "원에디션강남", "suplyPrvuseAr": 17.8},
         {"pnu": "9999", "hsmpNm": "다른단지", "suplyPrvuseAr": 30.0},
     ]
-    assert _match_units({"pnu": "1168010100106530006", "hsmpNm": ""}, complexes)[0]["suplyPrvuseAr"] == 17.8
+    assert (
+        _match_units({"pnu": "1168010100106530006", "hsmpNm": ""}, complexes)[0]["suplyPrvuseAr"]
+        == 17.8
+    )
     assert _match_units({"pnu": "", "hsmpNm": "다른단지"}, complexes)[0]["suplyPrvuseAr"] == 30.0
     assert _match_units({"pnu": "0000", "hsmpNm": "없는단지"}, complexes) == []
     assert _match_units({}, []) == []

@@ -12,6 +12,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pytest>=8.0",
+    "ruff>=0.15",
 ]
 
 [tool.uv.workspace]
@@ -24,3 +25,17 @@ zipdao-api = { workspace = true }
 
 [tool.pytest.ini_options]
 testpaths = ["packages"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I import 정렬, UP 최신 문법, B 버그 유발 패턴
+select = ["E", "W", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# 테스트 픽스처(HTML/JSON 원문)는 줄 길이 제한에서 제외
+"packages/*/tests/*" = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["zipdao_core", "zipdao_crawlers", "zipdao_api"]

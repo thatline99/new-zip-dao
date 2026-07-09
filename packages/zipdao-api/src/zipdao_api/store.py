@@ -7,8 +7,6 @@ import logging
 from datetime import date
 from pathlib import Path
 
-from zipdao_core.models import Notice
-
 from zipdao_api.schema import (
     Attachment,
     NoticeDetail,
@@ -16,7 +14,7 @@ from zipdao_api.schema import (
     NoticeSummary,
     RecommendRequest,
 )
-
+from zipdao_core.models import Notice
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +69,8 @@ def to_detail(notice: Notice, today: str) -> NoticeDetail:
         detailUrl=notice.detail_url,
         status=compute_status(apply_start, apply_end, today),
         attachments=[
-            Attachment(url=a.url, filename=a.filename, kind=a.kind.value) for a in notice.attachments
+            Attachment(url=a.url, filename=a.filename, kind=a.kind.value)
+            for a in notice.attachments
         ],
         summary=n.get("summary"),
         eligibility=n.get("eligibility"),
@@ -314,8 +313,10 @@ class NoticeStore:
             score += 2
         if req.supplyType and req.supplyType in (d.supplyType or ""):
             score += 2
-        if req.age is not None and req.age <= 39 and any(
-            k in (d.supplyType or "") for k in ("청년", "행복")
+        if (
+            req.age is not None
+            and req.age <= 39
+            and any(k in (d.supplyType or "") for k in ("청년", "행복"))
         ):
             score += 1
         return score

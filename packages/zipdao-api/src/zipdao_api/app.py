@@ -23,7 +23,6 @@ from zipdao_api.schema import (
 from zipdao_api.store import NoticeStore
 from zipdao_crawlers.registry import iter_sources
 
-
 logger = logging.getLogger(__name__)
 
 

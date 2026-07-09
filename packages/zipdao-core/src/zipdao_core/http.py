@@ -48,10 +48,15 @@ class HttpClient:
                 return resp
             except (httpx.HTTPError, httpx.StreamError) as exc:
                 last_exc = exc
-                wait = min(2.0 ** attempt, 30.0)
+                wait = min(2.0**attempt, 30.0)
                 logger.warning(
                     "요청 실패 (%s/%s) %s %s — %s; %.1fs 후 재시도",
-                    attempt, self._max_retries, method, url, exc, wait,
+                    attempt,
+                    self._max_retries,
+                    method,
+                    url,
+                    exc,
+                    wait,
                 )
                 if attempt < self._max_retries:
                     time.sleep(wait)
@@ -70,7 +75,7 @@ class HttpClient:
         """내부 HTTP 클라이언트를 닫는다."""
         self._client.close()
 
-    def __enter__(self) -> "HttpClient":
+    def __enter__(self) -> HttpClient:
         return self
 
     def __exit__(self, *exc) -> None:

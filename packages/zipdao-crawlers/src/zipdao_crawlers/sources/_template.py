@@ -26,7 +26,7 @@ class TemplateCrawler(BaseCrawler):
             rows = soup.select("table.board tbody tr")
             if not rows:
                 break
-            for row in rows:
+            for _row in rows:
                 yield NoticeStub(
                     notice_id="...",
                     title="...",

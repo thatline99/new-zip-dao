@@ -72,9 +72,7 @@ class ApplyhomeCrawler(DataGoKrCrawler):
                 pan_no = str(r.get("PBLANC_NO") or r.get("HOUSE_MANAGE_NO") or "").strip()
                 if not pan_no:
                     continue
-                category = " ".join(
-                    x for x in (r.get("HOUSE_SECD_NM"), r.get("RENT_SECD_NM")) if x
-                )
+                category = " ".join(x for x in (r.get("HOUSE_SECD_NM"), r.get("RENT_SECD_NM")) if x)
                 yield NoticeStub(
                     notice_id=pan_no,
                     title=(r.get("HOUSE_NM") or "").strip(),

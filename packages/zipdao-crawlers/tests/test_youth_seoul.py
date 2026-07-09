@@ -24,7 +24,9 @@ def test_parse_attachments_extracts_real_files_and_dedupes():
     # a[href*="fileDown.do"] 셀렉터에 안 걸린다(실제 페이지 형태와 동일).
     assert len(atts) == 2
     urls = {a.url for a in atts}
-    assert "https://soco.seoul.go.kr/coHouse/cmmn/file/fileDown.do?atchFileId=abc123&fileSn=1" in urls
+    assert (
+        "https://soco.seoul.go.kr/coHouse/cmmn/file/fileDown.do?atchFileId=abc123&fileSn=1" in urls
+    )
     assert any(a.filename.endswith(".pdf") for a in atts)
     assert any(a.filename.endswith(".hwp") for a in atts)
 

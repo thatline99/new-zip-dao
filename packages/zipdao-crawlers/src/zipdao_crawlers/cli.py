@@ -36,9 +36,7 @@ def _cmd_list(_args: argparse.Namespace) -> int:
             print(f"  {mark} {s.key:<14} {s.name:<20} {s.base_url}")
             if s.notes:
                 print(f"       └ {s.notes}")
-    print(
-        "\n✅=구현됨, ⬜=미구현(사이트 실측 후 sources/ 에 추가 필요)\n"
-    )
+    print("\n✅=구현됨, ⬜=미구현(사이트 실측 후 sources/ 에 추가 필요)\n")
     return 0
 
 
@@ -60,13 +58,15 @@ def _run_source(info: SourceInfo, args: argparse.Namespace) -> CrawlStats | None
         crawler.base_url = info.base_url
         engine = CrawlEngine(crawler, storage)
         logging.info("수집 시작: %s (%s) → %s", info.key, info.name, storage.raw_dir)
-        stats = engine.run(
-            since=args.since, until=args.until, limit=args.limit, force=args.force
-        )
+        stats = engine.run(since=args.since, until=args.until, limit=args.limit, force=args.force)
     logging.info(
         "완료: %s — 신규 %d, 스킵 %d, 첨부 %d, 실패 %d, 오류 %d",
-        stats.source, stats.notices_new, stats.notices_skipped,
-        stats.assets_downloaded, stats.assets_failed, len(stats.errors),
+        stats.source,
+        stats.notices_new,
+        stats.notices_skipped,
+        stats.assets_downloaded,
+        stats.assets_failed,
+        len(stats.errors),
     )
     return stats
 
@@ -117,9 +117,7 @@ def _cmd_normalize(args: argparse.Namespace) -> int:
                 continue
             raw["normalized"] = normalized
             data["raw"] = raw
-            manifest.write_text(
-                json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
-            )
+            manifest.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
             updated += 1
         logging.info("정규화: %s — %d건 갱신", src, updated)
         total += updated

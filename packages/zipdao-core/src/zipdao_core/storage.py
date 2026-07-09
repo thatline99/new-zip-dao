@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from zipdao_core.models import AssetKind, Attachment, Notice
@@ -31,7 +31,7 @@ def sanitize_filename(name: str, *, fallback: str = "file", max_len: int = 200) 
 
 
 def _now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 class Storage:

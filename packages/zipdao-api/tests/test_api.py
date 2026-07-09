@@ -278,7 +278,13 @@ def test_recommend_region_is_hard_filter(tmp_path: Path) -> None:
             "category": "행복주택",
             "region": "경기도",
             "attachments": [],
-            "raw": {"normalized": {"supplyType": "행복주택", "depositKRW": 10000000, "monthlyRentKRW": 100000}},
+            "raw": {
+                "normalized": {
+                    "supplyType": "행복주택",
+                    "depositKRW": 10000000,
+                    "monthlyRentKRW": 100000,
+                }
+            },
         },
     )
     c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
@@ -330,11 +336,17 @@ def test_status_is_computed_from_dates(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
     _write(raw, "myhome", "2026", "CLOSED", _notice("CLOSED", {"applyEnd": "2026-05-01"}))
     _write(
-        raw, "myhome", "2026", "UPCOMING",
+        raw,
+        "myhome",
+        "2026",
+        "UPCOMING",
         _notice("UPCOMING", {"applyStart": "2026-12-01", "applyEnd": "2026-12-31"}),
     )
     _write(
-        raw, "myhome", "2026", "OPEN",
+        raw,
+        "myhome",
+        "2026",
+        "OPEN",
         _notice("OPEN", {"applyStart": "2026-06-01", "applyEnd": "2026-07-31"}),
     )
     _write(raw, "myhome", "2026", "UNKNOWN", _notice("UNKNOWN", {}))
@@ -349,7 +361,10 @@ def test_search_filters_by_status(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
     _write(raw, "myhome", "2026", "CLOSED", _notice("CLOSED", {"applyEnd": "2026-05-01"}))
     _write(
-        raw, "myhome", "2026", "OPEN",
+        raw,
+        "myhome",
+        "2026",
+        "OPEN",
         _notice("OPEN", {"applyStart": "2026-06-01", "applyEnd": "2026-07-31"}),
     )
     c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
@@ -362,12 +377,26 @@ def test_search_filters_by_status(tmp_path: Path) -> None:
 def test_recommend_defaults_to_open_and_can_override(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
     _write(
-        raw, "myhome", "2026", "CLOSED",
+        raw,
+        "myhome",
+        "2026",
+        "CLOSED",
         _notice("CLOSED", {"applyEnd": "2026-05-01", "depositKRW": 1000, "monthlyRentKRW": 100}),
     )
     _write(
-        raw, "myhome", "2026", "OPEN",
-        _notice("OPEN", {"applyStart": "2026-06-01", "applyEnd": "2026-07-31", "depositKRW": 1000, "monthlyRentKRW": 100}),
+        raw,
+        "myhome",
+        "2026",
+        "OPEN",
+        _notice(
+            "OPEN",
+            {
+                "applyStart": "2026-06-01",
+                "applyEnd": "2026-07-31",
+                "depositKRW": 1000,
+                "monthlyRentKRW": 100,
+            },
+        ),
     )
     c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
     default = c.post("/recommend", json={"region": "경기", "limit": 10}).json()
@@ -380,7 +409,10 @@ def test_superseded_notice_is_dropped(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
     _write(raw, "myhome", "2026", "OLD", _notice("OLD", {"applyEnd": "2026-07-31"}))
     _write(
-        raw, "myhome", "2026", "NEW",
+        raw,
+        "myhome",
+        "2026",
+        "NEW",
         _notice("NEW", {"applyEnd": "2026-07-31", "supersedes": "OLD"}),
     )
     c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
@@ -406,7 +438,9 @@ def _lh(notice_id: str, normalized: dict) -> dict:
 
 def test_cross_source_lh_twin_dropped_keeps_myhome(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
-    _write(raw, "myhome", "2026", "M1", _notice("M1", {"applyEnd": "2026-07-31", "lhPanId": "LH-1"}))
+    _write(
+        raw, "myhome", "2026", "M1", _notice("M1", {"applyEnd": "2026-07-31", "lhPanId": "LH-1"})
+    )
     _write(raw, "lh_apply", "2026", "LH-1", _lh("LH-1", {}))
     _write(raw, "lh_apply", "2026", "LH-9", _lh("LH-9", {}))
     c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
@@ -429,7 +463,9 @@ def test_non_housing_daycare_excluded(tmp_path: Path) -> None:
 def test_supersede_does_not_cross_source(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
     # myhome head whose supersedes id collides with an unrelated lh_apply id
-    _write(raw, "myhome", "2026", "MA", _notice("MA", {"applyEnd": "2026-07-31", "supersedes": "X1"}))
+    _write(
+        raw, "myhome", "2026", "MA", _notice("MA", {"applyEnd": "2026-07-31", "supersedes": "X1"})
+    )
     _write(raw, "lh_apply", "2026", "X1", _lh("X1", {"supplyType": "국민임대"}))
     c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
     ids = sorted(i["noticeId"] for i in c.get("/notices", params={"limit": 10}).json()["items"])
@@ -445,9 +481,18 @@ def test_invalid_status_is_rejected(tmp_path: Path) -> None:
 
 def test_cross_source_drops_full_lh_chain(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
-    _write(raw, "myhome", "2026", "MOLD", _notice("MOLD", {"applyEnd": "2026-07-31", "lhPanId": "LH-A"}))
     _write(
-        raw, "myhome", "2026", "MNEW",
+        raw,
+        "myhome",
+        "2026",
+        "MOLD",
+        _notice("MOLD", {"applyEnd": "2026-07-31", "lhPanId": "LH-A"}),
+    )
+    _write(
+        raw,
+        "myhome",
+        "2026",
+        "MNEW",
         _notice("MNEW", {"applyEnd": "2026-07-31", "lhPanId": "LH-B", "supersedes": "MOLD"}),
     )
     _write(raw, "lh_apply", "2026", "LH-A", _lh("LH-A", {}))
@@ -473,17 +518,32 @@ def _dated(notice_id: str, posted: str, normalized: dict) -> dict:
 
 def test_search_default_sort_open_then_newest(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
-    _write(raw, "myhome", "2026", "CLOSED_OLD", _dated("CLOSED_OLD", "2026-04-01", {"applyEnd": "2026-05-01"}))
     _write(
-        raw, "myhome", "2026", "OPEN_OLD",
+        raw,
+        "myhome",
+        "2026",
+        "CLOSED_OLD",
+        _dated("CLOSED_OLD", "2026-04-01", {"applyEnd": "2026-05-01"}),
+    )
+    _write(
+        raw,
+        "myhome",
+        "2026",
+        "OPEN_OLD",
         _dated("OPEN_OLD", "2026-06-02", {"applyStart": "2026-06-01", "applyEnd": "2026-07-31"}),
     )
     _write(
-        raw, "myhome", "2026", "OPEN_NEW",
+        raw,
+        "myhome",
+        "2026",
+        "OPEN_NEW",
         _dated("OPEN_NEW", "2026-06-20", {"applyStart": "2026-06-10", "applyEnd": "2026-07-31"}),
     )
     _write(
-        raw, "myhome", "2026", "UPCOMING",
+        raw,
+        "myhome",
+        "2026",
+        "UPCOMING",
         _dated("UPCOMING", "2026-06-15", {"applyStart": "2026-12-01", "applyEnd": "2026-12-31"}),
     )
     c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
@@ -495,8 +555,13 @@ def test_search_offset_paginates(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
     for i in range(3):
         _write(
-            raw, "myhome", "2026", f"N{i}",
-            _dated(f"N{i}", f"2026-06-0{i + 1}", {"applyStart": "2026-06-01", "applyEnd": "2026-07-31"}),
+            raw,
+            "myhome",
+            "2026",
+            f"N{i}",
+            _dated(
+                f"N{i}", f"2026-06-0{i + 1}", {"applyStart": "2026-06-01", "applyEnd": "2026-07-31"}
+            ),
         )
     c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
     page1 = c.get("/notices", params={"limit": 1, "offset": 0}).json()
@@ -515,30 +580,51 @@ def test_search_limit_over_200_is_clamped_not_rejected(tmp_path: Path) -> None:
 
 def test_search_sort_latest_ignores_status(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
-    _write(raw, "myhome", "2026", "CLOSED_NEW", _dated("CLOSED_NEW", "2026-06-25", {"applyEnd": "2026-05-01"}))
     _write(
-        raw, "myhome", "2026", "OPEN_OLD",
+        raw,
+        "myhome",
+        "2026",
+        "CLOSED_NEW",
+        _dated("CLOSED_NEW", "2026-06-25", {"applyEnd": "2026-05-01"}),
+    )
+    _write(
+        raw,
+        "myhome",
+        "2026",
+        "OPEN_OLD",
         _dated("OPEN_OLD", "2026-06-01", {"applyStart": "2026-06-01", "applyEnd": "2026-07-31"}),
     )
     c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
     default = [i["noticeId"] for i in c.get("/notices", params={"limit": 10}).json()["items"]]
     assert default == ["OPEN_OLD", "CLOSED_NEW"]
-    latest = [i["noticeId"] for i in c.get("/notices", params={"limit": 10, "sort": "latest"}).json()["items"]]
+    latest = [
+        i["noticeId"]
+        for i in c.get("/notices", params={"limit": 10, "sort": "latest"}).json()["items"]
+    ]
     assert latest == ["CLOSED_NEW", "OPEN_OLD"]
 
 
 def test_search_sort_deadline_open_first_soonest(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
     _write(
-        raw, "myhome", "2026", "OPEN_LATER",
+        raw,
+        "myhome",
+        "2026",
+        "OPEN_LATER",
         _dated("OPEN_LATER", "2026-06-10", {"applyStart": "2026-06-01", "applyEnd": "2026-08-31"}),
     )
     _write(
-        raw, "myhome", "2026", "OPEN_SOON",
+        raw,
+        "myhome",
+        "2026",
+        "OPEN_SOON",
         _dated("OPEN_SOON", "2026-06-05", {"applyStart": "2026-06-01", "applyEnd": "2026-07-05"}),
     )
     c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
-    ids = [i["noticeId"] for i in c.get("/notices", params={"limit": 10, "sort": "deadline"}).json()["items"]]
+    ids = [
+        i["noticeId"]
+        for i in c.get("/notices", params={"limit": 10, "sort": "deadline"}).json()["items"]
+    ]
     assert ids == ["OPEN_SOON", "OPEN_LATER"]
 
 
@@ -551,8 +637,13 @@ def test_search_offset_past_end_keeps_total(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
     for i in range(3):
         _write(
-            raw, "myhome", "2026", f"N{i}",
-            _dated(f"N{i}", f"2026-06-0{i + 1}", {"applyStart": "2026-06-01", "applyEnd": "2026-07-31"}),
+            raw,
+            "myhome",
+            "2026",
+            f"N{i}",
+            _dated(
+                f"N{i}", f"2026-06-0{i + 1}", {"applyStart": "2026-06-01", "applyEnd": "2026-07-31"}
+            ),
         )
     c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
     r = c.get("/notices", params={"limit": 5, "offset": 100}).json()

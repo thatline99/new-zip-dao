@@ -38,7 +38,10 @@ SOURCES: list[SourceInfo] = [
         name="LH청약플러스",
         category=PORTAL,
         base_url="https://apply.lh.or.kr",
-        notes="공공데이터 API(15058530)로 공고 메타데이터+DTL_URL 수집. 원본 PDF는 robots 제한으로 제외.",
+        notes=(
+            "공공데이터 API(15058530)로 공고 메타데이터+DTL_URL 수집. "
+            "원본 PDF는 robots 제한으로 제외."
+        ),
         crawler=LhApplyCrawler,
     ),
     SourceInfo(
@@ -61,7 +64,9 @@ SOURCES: list[SourceInfo] = [
         name="서울 청년안심주택",
         category=PORTAL,
         base_url="https://soco.seoul.go.kr/youth",
-        notes="서울시 공동체주택플랫폼. 청년안심주택 민간임대 공고. (bbsListJson AJAX + view.do 첨부)",
+        notes=(
+            "서울시 공동체주택플랫폼. 청년안심주택 민간임대 공고. (bbsListJson AJAX + view.do 첨부)"
+        ),
         crawler=YouthSeoulCrawler,
     ),
     SourceInfo(
@@ -97,7 +102,10 @@ SOURCES: list[SourceInfo] = [
         name="마이홈포털",
         category=PRIVATE,
         base_url="https://www.myhome.go.kr",
-        notes="국토부 마이홈 API(15108420, HWSPR02 rsdtRcritNtcList). 전국 공공임대 모집공고(보증금·월세·공급유형).",
+        notes=(
+            "국토부 마이홈 API(15108420, HWSPR02 rsdtRcritNtcList). "
+            "전국 공공임대 모집공고(보증금·월세·공급유형)."
+        ),
         crawler=MyhomeCrawler,
     ),
 ]
@@ -115,6 +123,4 @@ def get_source(key: str) -> SourceInfo:
     try:
         return _BY_KEY[key]
     except KeyError:
-        raise KeyError(
-            f"알 수 없는 소스: {key!r}. 사용 가능: {', '.join(_BY_KEY)}"
-        ) from None
+        raise KeyError(f"알 수 없는 소스: {key!r}. 사용 가능: {', '.join(_BY_KEY)}") from None

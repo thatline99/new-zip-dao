@@ -38,7 +38,9 @@ def _block(payload, key: str) -> list[dict]:
     return []
 
 
-def normalize(item: dict, schedules: list[dict] | None = None, units: list[dict] | None = None) -> dict:
+def normalize(
+    item: dict, schedules: list[dict] | None = None, units: list[dict] | None = None
+) -> dict:
     """LH 공고 item(+단지 일정/공급 정보)을 정규화 블록으로 변환한다.
 
     - 접수기간: 단지별 청약 일정의 최소 시작일~최대 마감일, 없으면 공고 마감(CLSG_DT)
@@ -83,9 +85,7 @@ class LhApplyCrawler(DataGoKrCrawler):
         for code, type_name in HOUSING_TYPES:
             yield from self._iter_type(code, type_name, start, close)
 
-    def _iter_type(
-        self, code: str, type_name: str, start: str, close: str
-    ) -> Iterator[NoticeStub]:
+    def _iter_type(self, code: str, type_name: str, start: str, close: str) -> Iterator[NoticeStub]:
         page = 1
         while True:
             rows, all_cnt = self._fetch_page(code, start, close, page)
@@ -108,9 +108,7 @@ class LhApplyCrawler(DataGoKrCrawler):
                 break
             page += 1
 
-    def _fetch_page(
-        self, code: str, start: str, close: str, page: int
-    ) -> tuple[list[dict], int]:
+    def _fetch_page(self, code: str, start: str, close: str, page: int) -> tuple[list[dict], int]:
         resp = self.http.get(
             LIST_EP,
             params={
@@ -141,7 +139,11 @@ class LhApplyCrawler(DataGoKrCrawler):
         try:
             schedules = _block(self.http.get(DTL_EP, params=params).json(), "dsSplScdl")
             payload = self.http.get(SPL_EP, params=params).json()
-            units = _block(payload, "dsList01") or _block(payload, "dsList02") or _block(payload, "dsList")
+            units = (
+                _block(payload, "dsList01")
+                or _block(payload, "dsList02")
+                or _block(payload, "dsList")
+            )
         except Exception:
             logger.warning("LH 상세/공급정보 조회 실패: PAN_ID=%s", row.get("PAN_ID"))
             return [], []

@@ -38,8 +38,15 @@ def test_myhome_units_fill_when_item_prices_missing():
 
 
 def test_myhome_hwspr02_item_shape_delegates():
-    raw = {"item": {"suplyTyNm": "국민임대", "rentGtn": "1,000,000", "mtRntchrg": 200000,
-                    "beginDe": "20260618", "endDe": "20260702"}}
+    raw = {
+        "item": {
+            "suplyTyNm": "국민임대",
+            "rentGtn": "1,000,000",
+            "mtRntchrg": 200000,
+            "beginDe": "20260618",
+            "endDe": "20260702",
+        }
+    }
     n = normalize_myhome(raw)
     assert n["supplyType"] == "국민임대"
     assert n["depositKRW"] == 1000000
