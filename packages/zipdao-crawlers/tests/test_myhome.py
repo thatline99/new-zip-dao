@@ -75,6 +75,56 @@ def test_normalize_maps_rental_fields():
     assert n["areaM2"] is None
 
 
+def test_normalize_units_fill_missing_price_and_area():
+    from zipdao_crawlers.sources.myhome import normalize
+
+    units = [
+        {"suplyPrvuseAr": 62.081, "bassRentGtn": 20000000, "bassMtRntchrg": 300000},
+        {"suplyPrvuseAr": 46.12, "bassRentGtn": 15000000, "bassMtRntchrg": 250000},
+        {"suplyPrvuseAr": 0, "bassRentGtn": "0", "bassMtRntchrg": None},  # 무효값은 무시
+    ]
+    n = normalize({"suplyTyNm": "매입임대", "rentGtn": 0, "mtRntchrg": 0}, units)
+    assert n["areaM2"] == 46.12
+    assert n["depositKRW"] == 15000000
+    assert n["monthlyRentKRW"] == 250000
+
+
+def test_normalize_item_price_wins_over_units():
+    from zipdao_crawlers.sources.myhome import normalize
+
+    units = [{"suplyPrvuseAr": 46.12, "bassRentGtn": 15000000, "bassMtRntchrg": 250000}]
+    n = normalize({"suplyTyNm": "행복주택", "rentGtn": 66960000, "mtRntchrg": 267000}, units)
+    assert n["depositKRW"] == 66960000
+    assert n["monthlyRentKRW"] == 267000
+    assert n["areaM2"] == 46.12  # 면적은 공고에 없으므로 단지값
+
+
+def test_match_units_pnu_first_then_name():
+    from zipdao_crawlers.sources.myhome import _match_units
+
+    complexes = [
+        {"pnu": "1168010100106530006", "hsmpNm": "원에디션강남", "suplyPrvuseAr": 17.8},
+        {"pnu": "9999", "hsmpNm": "다른단지", "suplyPrvuseAr": 30.0},
+    ]
+    assert _match_units({"pnu": "1168010100106530006", "hsmpNm": ""}, complexes)[0]["suplyPrvuseAr"] == 17.8
+    assert _match_units({"pnu": "", "hsmpNm": "다른단지"}, complexes)[0]["suplyPrvuseAr"] == 30.0
+    assert _match_units({"pnu": "0000", "hsmpNm": "없는단지"}, complexes) == []
+    assert _match_units({}, []) == []
+
+
+def test_normalize_for_uses_stored_units():
+    from zipdao_crawlers.normalize import normalize_for
+
+    raw = {
+        "item": {"suplyTyNm": "전세임대", "rentGtn": 0},
+        "세대목록": [{"suplyPrvuseAr": 59.9, "bassRentGtn": 12000000, "bassMtRntchrg": 0}],
+    }
+    n = normalize_for("myhome", raw)
+    assert n["areaM2"] == 59.9
+    assert n["depositKRW"] == 12000000
+    assert n["monthlyRentKRW"] is None
+
+
 def test_normalize_zero_won_is_missing():
     from zipdao_crawlers.sources.myhome import normalize
 

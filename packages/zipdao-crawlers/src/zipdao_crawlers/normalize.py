@@ -52,9 +52,9 @@ def _first(*values: object) -> object | None:
 def normalize_myhome(raw: dict) -> dict:
     """마이홈 raw 데이터를 정규화 블록으로 변환한다."""
     if "item" in raw:
-        from zipdao_crawlers.sources.myhome import normalize as normalize_hwspr02
+        from zipdao_crawlers.sources.myhome import normalize as normalize_item
 
-        return normalize_hwspr02(raw["item"])
+        return normalize_item(raw["item"], raw.get("세대목록"))
 
     head = raw.get("단지") or {}
     units = raw.get("세대목록") or []

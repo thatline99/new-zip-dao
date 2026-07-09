@@ -2,16 +2,22 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Iterator
 
 from zipdao_core.config import load_settings
 from zipdao_core.models import Notice, NoticeStub
 from zipdao_crawlers.base import BaseCrawler
+from zipdao_crawlers.normalize import _area
 from zipdao_crawlers.sources._myhome_regions import REGIONS
 
+logger = logging.getLogger(__name__)
+
 LIST_EP = "https://apis.data.go.kr/1613000/HWSPR02/rsdtRcritNtcList"
+COMPLEX_EP = "https://apis.data.go.kr/1613000/HWSPR04/rentalHouseGwList"
 NUM_ROWS = 100
+COMPLEX_ROWS = 500
 
 
 def _iso(yyyymmdd) -> str | None:
@@ -37,13 +43,36 @@ def _lh_pan_id(url) -> str | None:
     return m.group(1) if m else None
 
 
-def normalize(item: dict) -> dict:
-    """마이홈 공고 item 을 정규화 블록으로 변환한다."""
+def _match_units(item: dict, complexes: list[dict]) -> list[dict]:
+    """공고를 단지(HWSPR04) 행들과 pnu → 단지명 순으로 매칭한다. 미매칭이면 빈 목록."""
+    pnu = str(item.get("pnu") or "").strip()
+    if pnu:
+        rows = [c for c in complexes if str(c.get("pnu") or "").strip() == pnu]
+        if rows:
+            return rows
+    name = (item.get("hsmpNm") or "").strip()
+    if name:
+        rows = [c for c in complexes if (c.get("hsmpNm") or "").strip() == name]
+        if rows:
+            return rows
+    return []
+
+
+def normalize(item: dict, units: list[dict] | None = None) -> dict:
+    """마이홈 공고 item(+단지 세대목록)을 정규화 블록으로 변환한다.
+
+    금액은 공고의 대표값을 우선하고, 없으면(매입/전세임대 등) 단지 세대
+    타입별 값의 최솟값("~부터")을 쓴다. 면적은 공고에 없어 세대 최솟값만.
+    """
+    units = units or []
+    areas = [a for a in (_area(u.get("suplyPrvuseAr")) for u in units) if a]
+    deposits = [d for d in (_won(u.get("bassRentGtn")) for u in units) if d]
+    rents = [r for r in (_won(u.get("bassMtRntchrg")) for u in units) if r]
     return {
         "supplyType": item.get("suplyTyNm") or None,
-        "depositKRW": _won(item.get("rentGtn")),
-        "monthlyRentKRW": _won(item.get("mtRntchrg")),
-        "areaM2": None,
+        "depositKRW": _won(item.get("rentGtn")) or (min(deposits) if deposits else None),
+        "monthlyRentKRW": _won(item.get("mtRntchrg")) or (min(rents) if rents else None),
+        "areaM2": min(areas) if areas else None,
         "applyStart": _iso(item.get("beginDe")),
         "applyEnd": _iso(item.get("endDe")),
         "summary": None,
@@ -69,8 +98,9 @@ class MyhomeCrawler(BaseCrawler):
             )
 
     def iter_notices(self, since: int | None, until: int | None) -> Iterator[NoticeStub]:
-        """지역코드별로 공고 요약을 순회한다."""
-        for brtc, signgu, sido_nm, sgg_nm in REGIONS:
+        """지역코드별로 공고 요약을 순회한다(단지 세대정보를 함께 붙인다)."""
+        for brtc, signgu, _sido_nm, _sgg_nm in REGIONS:
+            picked: list[tuple[dict, str | None]] = []
             for item in self._fetch_region(brtc, signgu):
                 posted = _iso(item.get("rcritPblancDe"))
                 year = int(posted[:4]) if posted and posted[:4].isdigit() else None
@@ -78,6 +108,11 @@ class MyhomeCrawler(BaseCrawler):
                     continue
                 if until is not None and (year is None or year > until):
                     continue
+                picked.append((item, posted))
+            if not picked:
+                continue
+            complexes = self._fetch_complexes(brtc, signgu)
+            for item, posted in picked:
                 yield NoticeStub(
                     notice_id=str(item.get("pblancId") or "").strip(),
                     title=(item.get("pblancNm") or "").strip(),
@@ -85,7 +120,7 @@ class MyhomeCrawler(BaseCrawler):
                     posted_date=posted,
                     category=item.get("suplyTyNm"),
                     region=f"{item.get('brtcNm', '')} {item.get('signguNm', '')}".strip(),
-                    extra={"item": item},
+                    extra={"item": item, "units": _match_units(item, complexes)},
                 )
 
     def _fetch_region(self, brtc: str, signgu: str) -> list[dict]:
@@ -111,6 +146,34 @@ class MyhomeCrawler(BaseCrawler):
             page += 1
         return rows
 
+    def _fetch_complexes(self, brtc: str, signgu: str) -> list[dict]:
+        """지역의 임대주택 단지(HWSPR04) 목록을 가져온다. 실패해도 크롤은 계속(빈 목록)."""
+        rows: list[dict] = []
+        page = 1
+        try:
+            while True:
+                resp = self.http.get(
+                    COMPLEX_EP,
+                    params={
+                        "serviceKey": self._key,
+                        "brtcCode": brtc,
+                        "signguCode": signgu,
+                        "numOfRows": COMPLEX_ROWS,
+                        "pageNo": page,
+                    },
+                )
+                items, total = self.parse_items(resp.json())
+                if not items:
+                    break
+                rows.extend(items)
+                if page * COMPLEX_ROWS >= total:
+                    break
+                page += 1
+        except Exception:
+            logger.warning("단지정보(HWSPR04) 조회 실패: brtc=%s signgu=%s", brtc, signgu)
+            return []
+        return rows
+
     @staticmethod
     def parse_items(data) -> tuple[list[dict], int]:
         """마이홈 응답에서 (항목 목록, 전체건수)를 추출한다."""
@@ -124,8 +187,12 @@ class MyhomeCrawler(BaseCrawler):
         return items, total
 
     def fetch_detail(self, stub: NoticeStub) -> Notice:
-        """공고 raw 데이터를 정규화해 Notice 를 만든다."""
+        """공고 raw 데이터(+단지 세대목록)를 정규화해 Notice 를 만든다."""
         item = stub.extra["item"]
+        units = stub.extra.get("units") or []
+        raw: dict = {"item": item, "normalized": normalize(item, units)}
+        if units:
+            raw["세대목록"] = units
         return Notice(
             source=self.key,
             notice_id=stub.notice_id,
@@ -135,5 +202,5 @@ class MyhomeCrawler(BaseCrawler):
             category=stub.category,
             region=stub.region,
             attachments=[],
-            raw={"item": item, "normalized": normalize(item)},
+            raw=raw,
         )
