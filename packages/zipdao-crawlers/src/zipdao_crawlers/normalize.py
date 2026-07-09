@@ -96,7 +96,7 @@ def normalize_lh(raw: dict) -> dict:
     """LH 청약플러스 raw 데이터를 정규화 블록으로 변환한다."""
     from zipdao_crawlers.sources.lh_apply import normalize as normalize_lh_item
 
-    return normalize_lh_item(raw)
+    return normalize_lh_item(raw, raw.get("일정목록"), raw.get("공급목록"))
 
 
 def normalize_youth(raw: dict) -> dict:
