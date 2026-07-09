@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import logging
 import time
-from collections.abc import Iterator
-from contextlib import contextmanager
 
 import httpx
 
@@ -67,14 +65,6 @@ class HttpClient:
     def post(self, url: str, **kwargs) -> httpx.Response:
         """POST 요청을 보낸다(재시도 내장)."""
         return self._request("POST", url, **kwargs)
-
-    @contextmanager
-    def stream(self, method: str, url: str, **kwargs) -> Iterator[httpx.Response]:
-        """대용량 첨부를 청크로 받기 위한 스트리밍 요청."""
-        self._throttle()
-        with self._client.stream(method, url, **kwargs) as resp:
-            resp.raise_for_status()
-            yield resp
 
     def close(self) -> None:
         """내부 HTTP 클라이언트를 닫는다."""

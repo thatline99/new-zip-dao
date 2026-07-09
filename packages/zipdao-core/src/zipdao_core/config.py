@@ -30,16 +30,6 @@ class Settings:
     rate_limit_per_sec: float
     data_go_kr_service_key: str | None = None
 
-    @property
-    def raw_dir(self) -> Path:
-        """원본 수집 데이터 디렉터리 경로."""
-        return self.data_dir / "raw"
-
-    @property
-    def state_dir(self) -> Path:
-        """크롤러 상태 파일 디렉터리 경로."""
-        return self.data_dir / "state"
-
 
 def load_settings(dotenv: Path | None = None) -> Settings:
     """환경변수(필요시 .env)에서 Settings 를 만든다."""
