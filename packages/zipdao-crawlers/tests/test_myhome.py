@@ -75,6 +75,14 @@ def test_normalize_maps_rental_fields():
     assert n["areaM2"] is None
 
 
+def test_normalize_zero_won_is_missing():
+    from zipdao_crawlers.sources.myhome import normalize
+
+    n = normalize({"suplyTyNm": "매입임대", "rentGtn": 0, "mtRntchrg": "0"})
+    assert n["depositKRW"] is None
+    assert n["monthlyRentKRW"] is None
+
+
 def test_iso_rejects_malformed():
     from zipdao_crawlers.sources.myhome import _iso
 

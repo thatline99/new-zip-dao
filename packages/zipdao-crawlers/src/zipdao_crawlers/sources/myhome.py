@@ -27,7 +27,9 @@ def _won(value) -> int | None:
     if value is None:
         return None
     digits = "".join(ch for ch in str(value) if ch.isdigit())
-    return int(digits) if digits else None
+    n = int(digits) if digits else None
+    # 매입/전세임대 등은 목록 API 가 0 을 반환 → 값 없음으로 취급
+    return n if n and n > 0 else None
 
 
 def _lh_pan_id(url) -> str | None:
