@@ -7,7 +7,7 @@ from collections.abc import Iterator
 from zipdao_core.dates import to_iso_date, year_of
 from zipdao_core.models import Notice, NoticeStub
 from zipdao_crawlers.base import DataGoKrCrawler
-from zipdao_crawlers.normalize import normalize_applyhome
+from zipdao_crawlers.fields import _first
 
 _SVC = "https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1"
 # (오퍼레이션 URL, 이름) — APT 는 분양 위주지만 분양전환 가능임대가 섞여 있고,
@@ -17,6 +17,26 @@ OPERATIONS: list[tuple[str, str]] = [
     (f"{_SVC}/getPblPvtRentLttotPblancDetail", "공공지원민간임대"),
 ]
 PER_PAGE = 100
+
+
+def normalize_raw(raw: dict) -> dict:
+    """청약홈 raw 행을 정규화 블록으로 변환한다(APT·공공지원민간임대 필드 변형 대응)."""
+    supply = _first(
+        raw.get("RENT_SECD_NM"),
+        raw.get("HOUSE_DETAIL_SECD_NM"),
+        raw.get("HOUSE_DTL_SECD_NM"),
+        raw.get("HOUSE_SECD_NM"),
+    )
+    return {
+        "supplyType": supply,
+        "depositKRW": None,
+        "monthlyRentKRW": None,
+        "areaM2": None,
+        "applyStart": to_iso_date(_first(raw.get("RCEPT_BGNDE"), raw.get("SUBSCRPT_RCEPT_BGNDE"))),
+        "applyEnd": to_iso_date(_first(raw.get("RCEPT_ENDDE"), raw.get("SUBSCRPT_RCEPT_ENDDE"))),
+        "summary": None,
+        "eligibility": None,
+    }
 
 
 class ApplyhomeCrawler(DataGoKrCrawler):
@@ -87,5 +107,5 @@ class ApplyhomeCrawler(DataGoKrCrawler):
     def fetch_detail(self, stub: NoticeStub) -> Notice:
         """공고 raw 데이터를 정규화해 Notice 를 만든다."""
         raw = dict(stub.extra)
-        raw["normalized"] = normalize_applyhome(raw)
+        raw["normalized"] = normalize_raw(raw)
         return Notice.from_stub(stub, source=self.key, raw=raw)

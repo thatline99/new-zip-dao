@@ -10,7 +10,6 @@ from bs4 import BeautifulSoup
 from zipdao_core.dates import to_iso_date, year_of
 from zipdao_core.models import Attachment, Notice, NoticeStub
 from zipdao_crawlers.base import BaseCrawler
-from zipdao_crawlers.normalize import normalize_youth
 
 BASE = "https://soco.seoul.go.kr"
 LIST_JSON = f"{BASE}/youth/pgm/home/yohome/bbsListJson.json"
@@ -18,6 +17,20 @@ LIST_JSON = f"{BASE}/youth/pgm/home/yohome/bbsListJson.json"
 BOARDS: list[tuple[str, str, str]] = [
     ("BMSR00015", "400008", "임대주택 모집공고"),
 ]
+
+
+def normalize_raw(raw: dict) -> dict:
+    """청년안심주택 raw 데이터를 정규화 블록으로 변환한다."""
+    return {
+        "supplyType": None,
+        "depositKRW": None,
+        "monthlyRentKRW": None,
+        "areaM2": None,
+        "applyStart": None,
+        "applyEnd": to_iso_date(raw.get("applyDate")),
+        "summary": None,
+        "eligibility": None,
+    }
 
 
 class YouthSeoulCrawler(BaseCrawler):
@@ -122,5 +135,5 @@ class YouthSeoulCrawler(BaseCrawler):
             "applyDate": stub.extra.get("applyDate"),
             "_detail_html": resp.text,
         }
-        raw["normalized"] = normalize_youth(raw)
+        raw["normalized"] = normalize_raw(raw)
         return Notice.from_stub(stub, source=self.key, attachments=attachments, raw=raw)

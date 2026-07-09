@@ -50,7 +50,7 @@ PBL_PVT_ROW = {
 
 
 def test_normalize_public_private_rent_row():
-    from zipdao_crawlers.normalize import normalize_applyhome
+    from zipdao_crawlers.sources.applyhome import normalize_raw as normalize_applyhome
 
     n = normalize_applyhome(PBL_PVT_ROW)
     assert n["supplyType"] == "공공지원민간임대"
@@ -59,7 +59,7 @@ def test_normalize_public_private_rent_row():
 
 
 def test_normalize_apt_row_still_works():
-    from zipdao_crawlers.normalize import normalize_applyhome
+    from zipdao_crawlers.sources.applyhome import normalize_raw as normalize_applyhome
 
     n = normalize_applyhome(
         {"RENT_SECD_NM": "분양주택", "RCEPT_BGNDE": "2026-08-11", "RCEPT_ENDDE": "2026-08-13"}

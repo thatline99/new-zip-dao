@@ -8,7 +8,7 @@ from collections.abc import Iterator
 from zipdao_core.dates import to_iso_date
 from zipdao_core.models import Notice, NoticeStub
 from zipdao_crawlers.base import DataGoKrCrawler
-from zipdao_crawlers.normalize import _area, _won
+from zipdao_crawlers.fields import _area, _won
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +62,11 @@ def normalize(item: dict, schedules: list[dict] | None = None, units: list[dict]
         "summary": None,
         "eligibility": None,
     }
+
+
+def normalize_raw(raw: dict) -> dict:
+    """저장된 raw(공고행 + 일정·공급 블록)를 정규화 블록으로 변환한다."""
+    return normalize(raw, raw.get("일정목록"), raw.get("공급목록"))
 
 
 class LhApplyCrawler(DataGoKrCrawler):

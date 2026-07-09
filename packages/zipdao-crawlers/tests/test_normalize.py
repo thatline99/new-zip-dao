@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from zipdao_crawlers.normalize import (
-    _area,
-    normalize_applyhome,
-    normalize_for,
-    normalize_myhome,
-    normalize_youth,
-)
+from zipdao_crawlers.fields import _area
+from zipdao_crawlers.normalize import normalize_for
+from zipdao_crawlers.sources.applyhome import normalize_raw as normalize_applyhome
+from zipdao_crawlers.sources.myhome import normalize_raw as normalize_myhome
+from zipdao_crawlers.sources.youth_seoul import normalize_raw as normalize_youth
 
 
 def test_myhome_units_extract_area_and_item_price_wins():
