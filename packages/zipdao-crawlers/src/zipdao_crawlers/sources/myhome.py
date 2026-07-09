@@ -6,6 +6,7 @@ import logging
 import re
 from collections.abc import Iterator
 
+from zipdao_core.dates import to_iso_date, year_of
 from zipdao_core.models import Notice, NoticeStub
 from zipdao_crawlers.base import DataGoKrCrawler
 from zipdao_crawlers.normalize import _area, _won
@@ -17,15 +18,6 @@ LIST_EP = "https://apis.data.go.kr/1613000/HWSPR02/rsdtRcritNtcList"
 COMPLEX_EP = "https://apis.data.go.kr/1613000/HWSPR04/rentalHouseGwList"
 NUM_ROWS = 100
 COMPLEX_ROWS = 500
-
-
-def _iso(yyyymmdd) -> str | None:
-    if not yyyymmdd:
-        return None
-    d = str(yyyymmdd).strip()
-    if len(d) == 8 and d.isdigit():
-        return f"{d[:4]}-{d[4:6]}-{d[6:]}"
-    return None
 
 
 def _lh_pan_id(url) -> str | None:
@@ -63,8 +55,8 @@ def normalize(item: dict, units: list[dict] | None = None) -> dict:
         "depositKRW": _won(item.get("rentGtn")) or (min(deposits) if deposits else None),
         "monthlyRentKRW": _won(item.get("mtRntchrg")) or (min(rents) if rents else None),
         "areaM2": min(areas) if areas else None,
-        "applyStart": _iso(item.get("beginDe")),
-        "applyEnd": _iso(item.get("endDe")),
+        "applyStart": to_iso_date(item.get("beginDe")),
+        "applyEnd": to_iso_date(item.get("endDe")),
         "summary": None,
         "eligibility": None,
         "supersedes": item.get("beforePblancId") or None,
@@ -90,8 +82,8 @@ class MyhomeCrawler(DataGoKrCrawler):
         for brtc, signgu, _sido_nm, _sgg_nm in REGIONS:
             picked: list[tuple[dict, str | None]] = []
             for item in self._fetch_region(brtc, signgu):
-                posted = _iso(item.get("rcritPblancDe"))
-                year = int(posted[:4]) if posted and posted[:4].isdigit() else None
+                posted = to_iso_date(item.get("rcritPblancDe"))
+                year = year_of(posted)
                 if since is not None and (year is None or year < since):
                     continue
                 if until is not None and (year is None or year > until):

@@ -33,3 +33,10 @@ def to_iso_date(value) -> str | None:
         return None
     year, month, day = match.groups()
     return f"{year}-{int(month):02d}-{int(day):02d}"
+
+
+def year_of(iso_date: str | None) -> int | None:
+    """ISO 날짜 문자열에서 연도(int)를 뽑는다. 해석 불가하면 None."""
+    if iso_date and iso_date[:4].isdigit():
+        return int(iso_date[:4])
+    return None

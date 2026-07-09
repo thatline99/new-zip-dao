@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
-from zipdao_core.dates import to_iso_date
+from zipdao_core.dates import to_iso_date, year_of
 from zipdao_core.models import Attachment, Notice, NoticeStub
 from zipdao_crawlers.base import BaseCrawler
 from zipdao_crawlers.normalize import normalize_youth
@@ -59,7 +59,7 @@ class YouthSeoulCrawler(BaseCrawler):
                 posted = to_iso_date(
                     r.get("optn1") or r.get("nttBgnde") or r.get("regDate")
                 )
-                year = int(posted[:4]) if posted and posted[:4].isdigit() else None
+                year = year_of(posted)
                 if year is not None:
                     if until is not None and year > until:
                         continue

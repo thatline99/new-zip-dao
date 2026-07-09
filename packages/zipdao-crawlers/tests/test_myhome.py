@@ -158,16 +158,6 @@ def test_normalize_zero_won_is_missing():
     assert n["monthlyRentKRW"] is None
 
 
-def test_iso_rejects_malformed():
-    from zipdao_crawlers.sources.myhome import _iso
-
-    assert _iso("20260618") == "2026-06-18"
-    assert _iso("") is None
-    assert _iso(None) is None
-    assert _iso("미정") is None
-    assert _iso("2026-06-18") is None
-
-
 def test_lh_pan_id_parses_query_param_only():
     from zipdao_crawlers.sources.myhome import _lh_pan_id
 

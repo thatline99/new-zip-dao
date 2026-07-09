@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from zipdao_core.dates import to_iso_date
+from zipdao_core.dates import to_iso_date, year_of
 
 
 def test_iso_passthrough():
@@ -40,3 +40,11 @@ def test_zero_pads_single_digit_month_day():
 
 def test_rejects_non_date_text():
     assert to_iso_date("미정") is None
+
+
+def test_year_of():
+    assert year_of("2026-06-18") == 2026
+    assert year_of("2026") == 2026
+    assert year_of(None) is None
+    assert year_of("") is None
+    assert year_of("미정") is None

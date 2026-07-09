@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from zipdao_core.dates import to_iso_date
+from zipdao_core.dates import to_iso_date, year_of
 from zipdao_core.models import Notice, NoticeStub
 from zipdao_crawlers.base import DataGoKrCrawler
 from zipdao_crawlers.normalize import normalize_applyhome
@@ -42,7 +42,7 @@ class ApplyhomeCrawler(DataGoKrCrawler):
             stop = False
             for r in rows:
                 posted = to_iso_date(r.get("RCRIT_PBLANC_DE"))
-                year = int(posted[:4]) if posted and posted[:4].isdigit() else None
+                year = year_of(posted)
                 if year is not None:
                     if until is not None and year > until:
                         continue
