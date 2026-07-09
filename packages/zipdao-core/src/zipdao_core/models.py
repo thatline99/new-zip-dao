@@ -100,6 +100,28 @@ class Notice:
     raw: dict = field(default_factory=dict)
     crawled_at: str | None = None
 
+    @classmethod
+    def from_stub(
+        cls,
+        stub: NoticeStub,
+        *,
+        source: str,
+        attachments: list[Attachment] | None = None,
+        raw: dict | None = None,
+    ) -> "Notice":
+        """NoticeStub 의 공통 필드를 옮겨 Notice 를 만든다."""
+        return cls(
+            source=source,
+            notice_id=stub.notice_id,
+            title=stub.title,
+            detail_url=stub.detail_url,
+            posted_date=stub.posted_date,
+            category=stub.category,
+            region=stub.region,
+            attachments=attachments if attachments is not None else [],
+            raw=raw if raw is not None else {},
+        )
+
     def to_dict(self) -> dict:
         """dict(JSON 직렬화용)으로 변환한다."""
         d = asdict(self)

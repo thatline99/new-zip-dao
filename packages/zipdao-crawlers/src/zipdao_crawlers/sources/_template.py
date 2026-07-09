@@ -43,14 +43,4 @@ class TemplateCrawler(BaseCrawler):
         for a in soup.select("a.file"):
             href = a.get("href", "")
             attachments.append(Attachment(url=href, filename=a.get_text(strip=True)))
-        return Notice(
-            source=self.key,
-            notice_id=stub.notice_id,
-            title=stub.title,
-            detail_url=stub.detail_url,
-            posted_date=stub.posted_date,
-            category=stub.category,
-            region=stub.region,
-            attachments=attachments,
-            raw={},
-        )
+        return Notice.from_stub(stub, source=self.key, attachments=attachments)

@@ -151,14 +151,4 @@ class LhApplyCrawler(DataGoKrCrawler):
         if units:
             raw["공급목록"] = units
         raw["normalized"] = normalize(raw, schedules, units)
-        return Notice(
-            source=self.key,
-            notice_id=stub.notice_id,
-            title=stub.title,
-            detail_url=stub.detail_url,
-            posted_date=stub.posted_date,
-            category=stub.category,
-            region=stub.region,
-            attachments=[],
-            raw=raw,
-        )
+        return Notice.from_stub(stub, source=self.key, raw=raw)

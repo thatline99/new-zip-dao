@@ -88,14 +88,4 @@ class ApplyhomeCrawler(DataGoKrCrawler):
         """공고 raw 데이터를 정규화해 Notice 를 만든다."""
         raw = dict(stub.extra)
         raw["normalized"] = normalize_applyhome(raw)
-        return Notice(
-            source=self.key,
-            notice_id=stub.notice_id,
-            title=stub.title,
-            detail_url=stub.detail_url,
-            posted_date=stub.posted_date,
-            category=stub.category,
-            region=stub.region,
-            attachments=[],
-            raw=raw,
-        )
+        return Notice.from_stub(stub, source=self.key, raw=raw)

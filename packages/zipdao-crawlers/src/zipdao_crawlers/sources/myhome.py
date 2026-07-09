@@ -188,14 +188,4 @@ class MyhomeCrawler(DataGoKrCrawler):
         raw: dict = {"item": item, "normalized": normalize(item, units)}
         if units:
             raw["세대목록"] = units
-        return Notice(
-            source=self.key,
-            notice_id=stub.notice_id,
-            title=stub.title,
-            detail_url=stub.detail_url,
-            posted_date=stub.posted_date,
-            category=stub.category,
-            region=stub.region,
-            attachments=[],
-            raw=raw,
-        )
+        return Notice.from_stub(stub, source=self.key, raw=raw)
