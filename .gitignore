@@ -72,6 +72,7 @@ logs/
 # ── 도구 상태 (oh-my-claudecode 등) ──
 .omc/
 .claude/
+.playwright-mcp/
 
 # ── 에디터 / OS ──
 .vscode/
