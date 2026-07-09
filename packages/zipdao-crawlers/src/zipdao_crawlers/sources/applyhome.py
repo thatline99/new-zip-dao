@@ -96,7 +96,7 @@ class ApplyhomeCrawler(DataGoKrCrawler):
         return self.parse_page(resp.json())
 
     @staticmethod
-    def parse_page(data) -> tuple[list[dict], int]:
+    def parse_page(data: object) -> tuple[list[dict], int]:
         """odcloud 응답에서 (행 목록, 전체건수)를 추출한다."""
         if not isinstance(data, dict):
             return [], 0

@@ -125,7 +125,7 @@ class LhApplyCrawler(DataGoKrCrawler):
         return self.parse_list(resp.json())
 
     @staticmethod
-    def parse_list(data) -> tuple[list[dict], int]:
+    def parse_list(data: object) -> tuple[list[dict], int]:
         """LH 응답에서 (행 목록, 전체건수)를 추출한다."""
         block = next((x for x in data if isinstance(x, dict) and "dsList" in x), None)
         rows = block.get("dsList", []) if block else []

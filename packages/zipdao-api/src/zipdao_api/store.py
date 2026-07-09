@@ -166,6 +166,14 @@ class NoticeStore:
 
     def reload(self) -> None:
         """raw 디렉터리의 manifest 를 다시 읽어 항목을 갱신한다."""
+        loaded, skipped = self._load_manifests()
+        items = self._dedup(loaded)
+        self._items = items
+        self._last_updated = self._compute_last_updated(items)
+        logger.info("reload: %d건 로드, %d건 건너뜀", len(items), skipped)
+
+    def _load_manifests(self) -> tuple[list[tuple[NoticeDetail, str | None, str | None]], int]:
+        """manifest 를 파싱하고 비임대·공지를 걸러 (항목, supersedes, lhPanId) 목록을 만든다."""
         today = self._today()
         loaded: list[tuple[NoticeDetail, str | None, str | None]] = []
         skipped = 0
@@ -184,6 +192,11 @@ class NoticeStore:
                     continue
                 normalized = data.get("raw", {}).get("normalized", {}) or {}
                 loaded.append((detail, normalized.get("supersedes"), normalized.get("lhPanId")))
+        return loaded, skipped
+
+    @staticmethod
+    def _dedup(loaded: list[tuple[NoticeDetail, str | None, str | None]]) -> list[NoticeDetail]:
+        """대체된 마이홈 공고와, 마이홈이 같은 공고를 가리키는 LH 쌍둥이 공고를 제거한다."""
         superseded = {sup for _, sup, _ in loaded if sup}
         lh_twins = {pan for _, _, pan in loaded if pan}
         items: list[NoticeDetail] = []
@@ -193,9 +206,7 @@ class NoticeStore:
             if detail.source == "lh_apply" and detail.noticeId in lh_twins:
                 continue
             items.append(detail)
-        self._items = items
-        self._last_updated = self._compute_last_updated(items)
-        logger.info("reload: %d건 로드, %d건 건너뜀", len(items), skipped)
+        return items
 
     def _compute_last_updated(self, items: list[NoticeDetail]) -> str | None:
         """데이터 갱신 시각: 크롤 완료 스탬프(last_crawl) 우선, 없으면 최신 crawledAt."""

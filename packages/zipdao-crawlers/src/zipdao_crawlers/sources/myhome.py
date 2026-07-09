@@ -20,7 +20,7 @@ NUM_ROWS = 100
 COMPLEX_ROWS = 500
 
 
-def _lh_pan_id(url) -> str | None:
+def _lh_pan_id(url: object) -> str | None:
     m = re.search(r"[?&]panId=(\d+)", str(url)) if url else None
     return m.group(1) if m else None
 
@@ -151,7 +151,7 @@ class MyhomeCrawler(DataGoKrCrawler):
             return []
 
     @staticmethod
-    def parse_items(data) -> tuple[list[dict], int]:
+    def parse_items(data: object) -> tuple[list[dict], int]:
         """마이홈 응답에서 (항목 목록, 전체건수)를 추출한다."""
         if not isinstance(data, dict):
             return [], 0
