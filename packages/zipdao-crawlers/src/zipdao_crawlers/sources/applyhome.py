@@ -10,9 +10,13 @@ from zipdao_core.models import Notice, NoticeStub
 from zipdao_crawlers.base import BaseCrawler
 from zipdao_crawlers.normalize import normalize_applyhome
 
-ODCLOUD_EP = (
-    "https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/getAPTLttotPblancDetail"
-)
+_SVC = "https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1"
+# (오퍼레이션 URL, 이름) — APT 는 분양 위주지만 분양전환 가능임대가 섞여 있고,
+# 공공지원민간임대는 전부 임대라 새집다오의 주 수집 대상이다.
+OPERATIONS: list[tuple[str, str]] = [
+    (f"{_SVC}/getAPTLttotPblancDetail", "APT 분양/임대"),
+    (f"{_SVC}/getPblPvtRentLttotPblancDetail", "공공지원민간임대"),
+]
 PER_PAGE = 100
 
 
@@ -32,10 +36,16 @@ class ApplyhomeCrawler(BaseCrawler):
             )
 
     def iter_notices(self, since: int | None, until: int | None) -> Iterator[NoticeStub]:
-        """odcloud API 를 페이지 순회하며 공고 요약을 만든다."""
+        """오퍼레이션별로 odcloud API 를 페이지 순회하며 공고 요약을 만든다."""
+        for endpoint, _name in OPERATIONS:
+            yield from self._iter_operation(endpoint, since, until)
+
+    def _iter_operation(
+        self, endpoint: str, since: int | None, until: int | None
+    ) -> Iterator[NoticeStub]:
         page = 1
         while True:
-            rows, total = self._fetch_page(page)
+            rows, total = self._fetch_page(endpoint, page)
             if not rows:
                 break
             stop = False
@@ -67,9 +77,9 @@ class ApplyhomeCrawler(BaseCrawler):
                 break
             page += 1
 
-    def _fetch_page(self, page: int) -> tuple[list[dict], int]:
+    def _fetch_page(self, endpoint: str, page: int) -> tuple[list[dict], int]:
         resp = self.http.get(
-            ODCLOUD_EP,
+            endpoint,
             params={"serviceKey": self._key, "page": page, "perPage": PER_PAGE},
         )
         return self.parse_page(resp.json())

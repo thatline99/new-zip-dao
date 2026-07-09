@@ -78,15 +78,20 @@ def normalize_myhome(raw: dict) -> dict:
 
 
 def normalize_applyhome(raw: dict) -> dict:
-    """청약홈 raw 데이터를 정규화 블록으로 변환한다."""
-    supply = _first(raw.get("RENT_SECD_NM"), raw.get("HOUSE_SECD_NM"))
+    """청약홈 raw 데이터를 정규화 블록으로 변환한다(APT·공공지원민간임대 필드 변형 대응)."""
+    supply = _first(
+        raw.get("RENT_SECD_NM"),
+        raw.get("HOUSE_DETAIL_SECD_NM"),
+        raw.get("HOUSE_DTL_SECD_NM"),
+        raw.get("HOUSE_SECD_NM"),
+    )
     return {
         "supplyType": supply,
         "depositKRW": None,
         "monthlyRentKRW": None,
         "areaM2": None,
-        "applyStart": to_iso_date(raw.get("RCEPT_BGNDE")),
-        "applyEnd": to_iso_date(raw.get("RCEPT_ENDDE")),
+        "applyStart": to_iso_date(_first(raw.get("RCEPT_BGNDE"), raw.get("SUBSCRPT_RCEPT_BGNDE"))),
+        "applyEnd": to_iso_date(_first(raw.get("RCEPT_ENDDE"), raw.get("SUBSCRPT_RCEPT_ENDDE"))),
         "summary": None,
         "eligibility": None,
     }
