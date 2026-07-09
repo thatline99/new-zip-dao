@@ -571,3 +571,20 @@ def test_last_updated_prefers_stamp_file(tmp_path: Path) -> None:
     c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
     r = c.get("/notices", params={"limit": 10}).json()
     assert r["lastUpdated"] == "2026-07-09T06:00:00Z"
+
+
+def test_search_multiword_query_matches_tokens_in_any_order(tmp_path: Path) -> None:
+    c = _client(tmp_path)
+    for q in ("국민임대 서울", "서울 국민임대", "서울 강서 국민임대"):
+        r = c.get("/notices", params={"q": q, "limit": 10})
+        assert r.status_code == 200
+        data = r.json()
+        assert data["total"] == 1, q
+        assert data["items"][0]["noticeId"] == "SEOUL-1"
+
+
+def test_search_multiword_query_requires_all_tokens(tmp_path: Path) -> None:
+    c = _client(tmp_path)
+    r = c.get("/notices", params={"q": "국민임대 부산", "limit": 10})
+    assert r.status_code == 200
+    assert r.json()["total"] == 0

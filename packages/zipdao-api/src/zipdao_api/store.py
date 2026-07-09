@@ -226,7 +226,7 @@ class NoticeStore:
         today = self._today()
         lo = _expand_since(since)
         hi = _expand_until(until)
-        needle = q.lower() if q else None
+        tokens = q.lower().split() if q else []
         matches: list[NoticeSummary] = []
         for d in self._items:
             if source and d.source != source:
@@ -241,11 +241,11 @@ class NoticeStore:
                 continue
             if hi and d.postedDate and d.postedDate > hi:
                 continue
-            if needle:
+            if tokens:
                 hay = " ".join(
                     [d.title, d.region or "", d.category or "", d.supplyType or "", d.summary or ""]
                 ).lower()
-                if needle not in hay:
+                if not all(t in hay for t in tokens):
                     continue
             matches.append(to_summary(d, today))
         ordered = _sort_summaries(matches, sort)
