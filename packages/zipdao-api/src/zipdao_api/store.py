@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import date
 from pathlib import Path
 
@@ -15,6 +16,9 @@ from zipdao_api.schema import (
     NoticeSummary,
     RecommendRequest,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def _normalized(notice: Notice) -> dict:
@@ -157,12 +161,15 @@ class NoticeStore:
         """raw 디렉터리의 manifest 를 다시 읽어 항목을 갱신한다."""
         today = self._today()
         loaded: list[tuple[NoticeDetail, str | None, str | None]] = []
+        skipped = 0
         if self.raw_dir.exists():
             for manifest in sorted(self.raw_dir.glob("*/*/*/manifest.json")):
                 try:
                     data = json.loads(manifest.read_text(encoding="utf-8"))
                     detail = to_detail(Notice.from_dict(data), today)
                 except Exception:
+                    skipped += 1
+                    logger.warning("reload: manifest 파싱 실패로 건너뜀: %s", manifest)
                     continue
                 if _is_sale(detail.supplyType) or _is_non_housing(detail.supplyType):
                     continue
@@ -181,6 +188,7 @@ class NoticeStore:
             items.append(detail)
         self._items = items
         self._last_updated = self._compute_last_updated(items)
+        logger.info("reload: %d건 로드, %d건 건너뜀", len(items), skipped)
 
     def _compute_last_updated(self, items: list[NoticeDetail]) -> str | None:
         """데이터 갱신 시각: 크롤 완료 스탬프(last_crawl) 우선, 없으면 최신 crawledAt."""

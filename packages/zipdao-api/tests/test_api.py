@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -571,6 +573,45 @@ def test_last_updated_prefers_stamp_file(tmp_path: Path) -> None:
     c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
     r = c.get("/notices", params={"limit": 10}).json()
     assert r["lastUpdated"] == "2026-07-09T06:00:00Z"
+
+
+def test_reload_picks_up_new_manifests(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(raw, "myhome", "2026", "A", _notice("A", {"applyEnd": "2026-07-31"}))
+    store = NoticeStore(raw, today=TODAY)
+    c = TestClient(create_app(store))
+    assert c.get("/notices", params={"limit": 10}).json()["total"] == 1
+    _write(raw, "myhome", "2026", "B", _notice("B", {"applyEnd": "2026-07-31"}))
+    store.reload()
+    assert c.get("/notices", params={"limit": 10}).json()["total"] == 2
+
+
+def test_periodic_reload_refreshes_store(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("RELOAD_INTERVAL_SECONDS", "0.05")
+    raw = tmp_path / "raw"
+    _write(raw, "myhome", "2026", "A", _notice("A", {"applyEnd": "2026-07-31"}))
+    store = NoticeStore(raw, today=TODAY)
+    with TestClient(create_app(store)) as c:
+        assert c.get("/notices", params={"limit": 10}).json()["total"] == 1
+        _write(raw, "myhome", "2026", "B", _notice("B", {"applyEnd": "2026-07-31"}))
+        deadline = time.monotonic() + 3.0
+        total = 1
+        while time.monotonic() < deadline:
+            total = c.get("/notices", params={"limit": 10}).json()["total"]
+            if total == 2:
+                break
+            time.sleep(0.05)
+        assert total == 2
+
+
+def test_bad_manifest_skip_is_logged(tmp_path: Path, caplog) -> None:
+    raw = tmp_path / "raw"
+    bad = raw / "myhome" / "2026" / "BAD"
+    bad.mkdir(parents=True)
+    (bad / "manifest.json").write_text("{ broken json", encoding="utf-8")
+    with caplog.at_level(logging.WARNING, logger="zipdao_api.store"):
+        NoticeStore(raw, today=TODAY)
+    assert "건너뜀" in caplog.text
 
 
 def test_search_multiword_query_matches_tokens_in_any_order(tmp_path: Path) -> None:
