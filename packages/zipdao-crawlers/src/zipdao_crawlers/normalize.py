@@ -50,31 +50,10 @@ def _first(*values: object) -> object | None:
 
 
 def normalize_myhome(raw: dict) -> dict:
-    """마이홈 raw 데이터를 정규화 블록으로 변환한다."""
-    if "item" in raw:
-        from zipdao_crawlers.sources.myhome import normalize as normalize_item
+    """마이홈 raw({"item": 공고행, "세대목록": 단지 행들})를 정규화 블록으로 변환한다."""
+    from zipdao_crawlers.sources.myhome import normalize as normalize_item
 
-        return normalize_item(raw["item"], raw.get("세대목록"))
-
-    head = raw.get("단지") or {}
-    units = raw.get("세대목록") or []
-    unit_areas = [a for a in (_area(u.get("suplyPrvuseAr")) for u in units) if a]
-    unit_deposits = [d for d in (_won(u.get("bassRentGtn")) for u in units) if d]
-    unit_rents = [r for r in (_won(u.get("bassMtRntchrg")) for u in units) if r]
-    supply = head.get("suplyTyNm") or (units[0].get("suplyTyNm") if units else None)
-    return {
-        "supplyType": supply or None,
-        "depositKRW": _won(head.get("bassRentGtn"))
-        or (min(unit_deposits) if unit_deposits else None),
-        "monthlyRentKRW": _won(head.get("bassMtRntchrg"))
-        or (min(unit_rents) if unit_rents else None),
-        "areaM2": _area(head.get("suplyPrvuseAr"))
-        or (min(unit_areas) if unit_areas else None),
-        "applyStart": None,
-        "applyEnd": None,
-        "summary": None,
-        "eligibility": None,
-    }
+    return normalize_item(raw.get("item") or {}, raw.get("세대목록"))
 
 
 def normalize_applyhome(raw: dict) -> dict:

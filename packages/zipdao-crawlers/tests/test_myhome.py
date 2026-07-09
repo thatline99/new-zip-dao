@@ -125,6 +125,31 @@ def test_normalize_for_uses_stored_units():
     assert n["monthlyRentKRW"] is None
 
 
+def test_iter_notices_dedupes_preferring_unit_matched(monkeypatch):
+    from zipdao_crawlers.sources import myhome as mod
+
+    # 광역 공고가 두 시군구 조회에 중복 등장 — 두 번째 지역에서만 단지(pnu) 매칭 성공
+    item = {
+        "pblancId": "P1",
+        "pblancNm": "광역 공고",
+        "rcritPblancDe": "20260701",
+        "pnu": "PNU1",
+        "brtcNm": "경기도",
+        "signguNm": "A시",
+    }
+    monkeypatch.setattr(
+        mod, "REGIONS", [("41", "100", "경기도", "A시"), ("41", "200", "경기도", "B시")]
+    )
+    crawler = mod.MyhomeCrawler.__new__(mod.MyhomeCrawler)
+    crawler._fetch_region = lambda brtc, signgu: [dict(item)]
+    complexes = {"100": [], "200": [{"pnu": "PNU1", "suplyPrvuseAr": 21.5}]}
+    crawler._fetch_complexes = lambda brtc, signgu: complexes[signgu]
+
+    stubs = list(crawler.iter_notices(2026, None))
+    assert len(stubs) == 1  # 중복 제거
+    assert stubs[0].extra["units"] == [{"pnu": "PNU1", "suplyPrvuseAr": 21.5}]  # 매칭본 보존
+
+
 def test_normalize_zero_won_is_missing():
     from zipdao_crawlers.sources.myhome import normalize
 

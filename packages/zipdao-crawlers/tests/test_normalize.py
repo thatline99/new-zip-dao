@@ -9,14 +9,9 @@ from zipdao_crawlers.normalize import (
 )
 
 
-def test_myhome_hwspr04_extracts_area_and_price():
+def test_myhome_units_extract_area_and_item_price_wins():
     raw = {
-        "단지": {
-            "suplyTyNm": "영구임대",
-            "suplyPrvuseAr": 26.34,
-            "bassRentGtn": 3449000,
-            "bassMtRntchrg": 76720,
-        },
+        "item": {"suplyTyNm": "영구임대", "rentGtn": 3449000, "mtRntchrg": 76720},
         "세대목록": [
             {"suplyPrvuseAr": 26.34, "bassRentGtn": 3449000, "bassMtRntchrg": 76720},
             {"suplyPrvuseAr": 30.48, "bassRentGtn": 3991000, "bassMtRntchrg": 88010},
@@ -30,9 +25,9 @@ def test_myhome_hwspr04_extracts_area_and_price():
     assert n["applyStart"] is None
 
 
-def test_myhome_hwspr04_falls_back_to_units_when_head_missing():
+def test_myhome_units_fill_when_item_prices_missing():
     raw = {
-        "단지": {"suplyTyNm": "매입임대"},
+        "item": {"suplyTyNm": "매입임대", "rentGtn": 0},
         "세대목록": [
             {"suplyPrvuseAr": 24.83, "bassRentGtn": 3489000, "bassMtRntchrg": 0},
             {"suplyPrvuseAr": 21.86, "bassRentGtn": 3053000, "bassMtRntchrg": 0},

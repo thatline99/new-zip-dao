@@ -9,7 +9,7 @@ from collections.abc import Iterator
 from zipdao_core.config import load_settings
 from zipdao_core.models import Notice, NoticeStub
 from zipdao_crawlers.base import BaseCrawler
-from zipdao_crawlers.normalize import _area
+from zipdao_crawlers.normalize import _area, _won
 from zipdao_crawlers.sources._myhome_regions import REGIONS
 
 logger = logging.getLogger(__name__)
@@ -27,15 +27,6 @@ def _iso(yyyymmdd) -> str | None:
     if len(d) == 8 and d.isdigit():
         return f"{d[:4]}-{d[4:6]}-{d[6:]}"
     return None
-
-
-def _won(value) -> int | None:
-    if value is None:
-        return None
-    digits = "".join(ch for ch in str(value) if ch.isdigit())
-    n = int(digits) if digits else None
-    # 매입/전세임대 등은 목록 API 가 0 을 반환 → 값 없음으로 취급
-    return n if n and n > 0 else None
 
 
 def _lh_pan_id(url) -> str | None:
@@ -98,7 +89,13 @@ class MyhomeCrawler(BaseCrawler):
             )
 
     def iter_notices(self, since: int | None, until: int | None) -> Iterator[NoticeStub]:
-        """지역코드별로 공고 요약을 순회한다(단지 세대정보를 함께 붙인다)."""
+        """지역코드별로 공고 요약을 순회한다(단지 세대정보를 함께 붙인다).
+
+        광역 공고는 여러 시군구 조회에 중복 등장하므로 공고 ID 로 중복을 제거하되,
+        단지(pnu) 매칭에 성공한 스텁을 우선 보존한다 — 마지막 쓰기가 매칭 결과를
+        덮어써 면적·금액을 잃는 것을 막는다.
+        """
+        best: dict[str, NoticeStub] = {}
         for brtc, signgu, _sido_nm, _sgg_nm in REGIONS:
             picked: list[tuple[dict, str | None]] = []
             for item in self._fetch_region(brtc, signgu):
@@ -113,8 +110,11 @@ class MyhomeCrawler(BaseCrawler):
                 continue
             complexes = self._fetch_complexes(brtc, signgu)
             for item, posted in picked:
-                yield NoticeStub(
-                    notice_id=str(item.get("pblancId") or "").strip(),
+                notice_id = str(item.get("pblancId") or "").strip()
+                if not notice_id:
+                    continue
+                stub = NoticeStub(
+                    notice_id=notice_id,
                     title=(item.get("pblancNm") or "").strip(),
                     detail_url=(item.get("pcUrl") or item.get("url") or "").strip(),
                     posted_date=posted,
@@ -122,6 +122,10 @@ class MyhomeCrawler(BaseCrawler):
                     region=f"{item.get('brtcNm', '')} {item.get('signguNm', '')}".strip(),
                     extra={"item": item, "units": _match_units(item, complexes)},
                 )
+                prev = best.get(notice_id)
+                if prev is None or (not prev.extra.get("units") and stub.extra.get("units")):
+                    best[notice_id] = stub
+        yield from best.values()
 
     def _fetch_region(self, brtc: str, signgu: str) -> list[dict]:
         rows: list[dict] = []
