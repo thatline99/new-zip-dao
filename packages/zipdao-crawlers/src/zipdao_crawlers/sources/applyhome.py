@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterator
 
 from zipdao_core.dates import to_iso_date, year_of
 from zipdao_core.models import Notice, NoticeStub
 from zipdao_crawlers.base import DataGoKrCrawler
-from zipdao_crawlers.fields import _first
+from zipdao_crawlers.fields import _area, _first
+
+logger = logging.getLogger(__name__)
 
 _SVC = "https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1"
 # (오퍼레이션 URL, 이름) — APT 는 분양 위주지만 분양전환 가능임대가 섞여 있고,
@@ -16,6 +19,11 @@ OPERATIONS: list[tuple[str, str]] = [
     (f"{_SVC}/getAPTLttotPblancDetail", "APT 분양/임대"),
     (f"{_SVC}/getPblPvtRentLttotPblancDetail", "공공지원민간임대"),
 ]
+# 목록 오퍼레이션 → 주택형별 상세(Mdl) 오퍼레이션. 전용면적(EXCLUSE_AR/HOUSE_TY) 보강용.
+_MDL_EPS = {
+    f"{_SVC}/getAPTLttotPblancDetail": f"{_SVC}/getAPTLttotPblancMdl",
+    f"{_SVC}/getPblPvtRentLttotPblancDetail": f"{_SVC}/getPblPvtRentLttotPblancMdl",
+}
 PER_PAGE = 100
 
 
@@ -27,11 +35,17 @@ def normalize_raw(raw: dict) -> dict:
         raw.get("HOUSE_DTL_SECD_NM"),
         raw.get("HOUSE_SECD_NM"),
     )
+    # 주택형별 상세(Mdl): 전용면적은 EXCLUSE_AR(민간임대) 또는
+    # HOUSE_TY 숫자 접두("055.9200A" 형, APT)로 온다. 최솟값 = "~부터".
+    models = raw.get("주택형목록") or []
+    areas = [
+        a for a in (_area(_first(m.get("EXCLUSE_AR"), m.get("HOUSE_TY"))) for m in models) if a
+    ]
     return {
         "supplyType": supply,
         "depositKRW": None,
         "monthlyRentKRW": None,
-        "areaM2": None,
+        "areaM2": min(areas) if areas else None,
         "applyStart": to_iso_date(_first(raw.get("RCEPT_BGNDE"), raw.get("SUBSCRPT_RCEPT_BGNDE"))),
         "applyEnd": to_iso_date(_first(raw.get("RCEPT_ENDDE"), raw.get("SUBSCRPT_RCEPT_ENDDE"))),
         "summary": None,
@@ -80,7 +94,7 @@ class ApplyhomeCrawler(DataGoKrCrawler):
                     posted_date=posted,
                     category=category or None,
                     region=r.get("SUBSCRPT_AREA_CODE_NM"),
-                    extra=dict(r),
+                    extra={**r, "_endpoint": endpoint},
                 )
             if stop or page * PER_PAGE >= total:
                 break
@@ -102,8 +116,33 @@ class ApplyhomeCrawler(DataGoKrCrawler):
         total = int(data.get("totalCount") or 0)
         return rows, total
 
+    def _fetch_models(self, item: dict) -> list[dict]:
+        """공고의 주택형별 행(Mdl API)을 가져온다. 실패해도 수집은 계속(빈 목록)."""
+        mdl_ep = _MDL_EPS.get(item.get("_endpoint") or "")
+        manage_no = str(item.get("HOUSE_MANAGE_NO") or "").strip()
+        if not mdl_ep or not manage_no:
+            return []
+        try:
+            resp = self.http.get(
+                mdl_ep,
+                params={
+                    "serviceKey": self._key,
+                    "page": 1,
+                    "perPage": PER_PAGE,
+                    "cond[HOUSE_MANAGE_NO::EQ]": manage_no,
+                },
+            )
+            data = resp.json()
+            return list(data.get("data") or []) if isinstance(data, dict) else []
+        except Exception:
+            logger.warning("주택형별 상세(Mdl) 조회 실패: HOUSE_MANAGE_NO=%s", manage_no)
+            return []
+
     def fetch_detail(self, stub: NoticeStub) -> Notice:
-        """공고 raw 데이터를 정규화해 Notice 를 만든다."""
+        """공고 raw 데이터(+주택형별 상세)를 정규화해 Notice 를 만든다."""
         raw = dict(stub.extra)
+        models = self._fetch_models(raw)
+        if models:
+            raw["주택형목록"] = models
         raw["normalized"] = normalize_raw(raw)
         return Notice.from_stub(stub, source=self.key, raw=raw)
