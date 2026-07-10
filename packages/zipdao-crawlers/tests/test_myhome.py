@@ -185,6 +185,45 @@ def test_iter_notices_falls_back_to_region_loop_when_nationwide_empty(monkeypatc
     assert len(stubs) == 1 and stubs[0].notice_id == "P9"
 
 
+def test_region_codes_prefers_pnu_prefix():
+    from zipdao_crawlers.sources.myhome import _region_codes
+
+    by_name = {("경기도", "A시"): ("41", "100")}
+    # pnu 앞 5자리 = 시군구 코드 — 광역 공고는 signguNm 이 비어 있어도 해석 가능
+    assert _region_codes(
+        {"pnu": "5214011700113760001", "brtcNm": "전북특별자치도", "signguNm": ""}, by_name
+    ) == ("52", "140")
+    # pnu 없으면 지역명 매핑
+    assert _region_codes({"brtcNm": "경기도", "signguNm": "A시"}, by_name) == ("41", "100")
+    # 둘 다 안 되면 None
+    assert _region_codes({"brtcNm": "새도시", "signguNm": "X구"}, by_name) is None
+
+
+def test_iter_notices_falls_back_when_nationwide_raises(monkeypatch):
+    from zipdao_crawlers.sources import myhome as mod
+
+    monkeypatch.setattr(mod, "REGIONS", [("41", "100", "경기도", "A시")])
+    crawler = mod.MyhomeCrawler.__new__(mod.MyhomeCrawler)
+    row = {
+        "pblancId": "P8",
+        "pblancNm": "예외 폴백 공고",
+        "rcritPblancDe": "20260701",
+        "brtcNm": "경기도",
+        "signguNm": "A시",
+    }
+
+    def fake_fetch_all(ep, rows, extra=None):
+        if extra is None:
+            raise RuntimeError("오류 응답(JSON 아님) 등")
+        return [row]
+
+    crawler._fetch_all = fake_fetch_all
+    crawler._fetch_complexes = lambda brtc, signgu: []
+
+    stubs = list(crawler.iter_notices(None, None))
+    assert len(stubs) == 1 and stubs[0].notice_id == "P8"
+
+
 def test_iter_notices_unknown_region_skips_complex_lookup(monkeypatch):
     from zipdao_crawlers.sources import myhome as mod
 

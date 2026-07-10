@@ -25,6 +25,20 @@ def _lh_pan_id(url: object) -> str | None:
     return m.group(1) if m else None
 
 
+def _region_codes(
+    item: dict, by_name: dict[tuple[str, str], tuple[str, str]]
+) -> tuple[str, str] | None:
+    """단지(HWSPR04) 조회용 (광역, 시군구) 코드를 구한다.
+
+    pnu 앞 5자리가 곧 시군구 코드라 우선 사용한다 — 광역 단위 공고는
+    signguNm 이 비어 있어 지역명 매핑만으로는 코드를 찾을 수 없다.
+    """
+    pnu = str(item.get("pnu") or "").strip()
+    if len(pnu) >= 5 and pnu[:5].isdigit():
+        return pnu[:2], pnu[2:5]
+    return by_name.get(((item.get("brtcNm") or "").strip(), (item.get("signguNm") or "").strip()))
+
+
 def _match_units(item: dict, complexes: list[dict]) -> list[dict]:
     """공고를 단지(HWSPR04) 행들과 pnu → 단지명 순으로 매칭한다. 미매칭이면 빈 목록."""
     pnu = str(item.get("pnu") or "").strip()
@@ -86,7 +100,11 @@ class MyhomeCrawler(DataGoKrCrawler):
         한 공고가 단지(houseSn)별 여러 행으로 오므로 공고 ID 로 중복을 제거하되,
         단지(pnu) 매칭에 성공한 행을 우선 보존한다.
         """
-        items = self._fetch_all(LIST_EP, NUM_ROWS)
+        items: list[dict] = []
+        try:
+            items = self._fetch_all(LIST_EP, NUM_ROWS)
+        except Exception:
+            logger.warning("마이홈 전국 조회 실패(예외)")
         if not items:
             logger.warning("마이홈 전국 조회가 비어 있음 — 시군구 순회로 폴백")
             items = [
@@ -110,8 +128,7 @@ class MyhomeCrawler(DataGoKrCrawler):
             notice_id = str(item.get("pblancId") or "").strip()
             if not notice_id:
                 continue
-            key = ((item.get("brtcNm") or "").strip(), (item.get("signguNm") or "").strip())
-            codes = region_codes.get(key)
+            codes = _region_codes(item, region_codes)
             if codes is None:
                 units: list[dict] = []
             else:
