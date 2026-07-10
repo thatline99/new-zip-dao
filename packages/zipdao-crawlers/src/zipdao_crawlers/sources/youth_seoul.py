@@ -19,10 +19,14 @@ BOARDS: list[tuple[str, str, str]] = [
 ]
 
 
+# 목록 optn2(gubun) 코드 → 공급유형. 저장 데이터 427건 전수 대조로 확인한 매핑.
+_GUBUN_SUPPLY = {"1": "공공임대", "2": "민간임대"}
+
+
 def normalize_raw(raw: dict) -> dict:
     """청년안심주택 raw 데이터를 정규화 블록으로 변환한다."""
     return {
-        "supplyType": None,
+        "supplyType": _GUBUN_SUPPLY.get(str(raw.get("gubun") or "")),
         "depositKRW": None,
         "monthlyRentKRW": None,
         "areaM2": None,
@@ -127,10 +131,24 @@ class YouthSeoulCrawler(BaseCrawler):
             attachments.append(Attachment(url=full, filename=a.get_text(strip=True)))
         return attachments
 
+    @staticmethod
+    def parse_gu(html: str) -> str | None:
+        """상세의 카테고리(자치구)를 추출한다 — 해당 자치구 option 만 텍스트가 채워져 있다."""
+        soup = BeautifulSoup(html, "lxml")
+        for li in soup.select("ul.view_data li"):
+            title = li.select_one("span.title")
+            if title and "카테고리" in title.get_text():
+                for opt in li.select("option"):
+                    text = opt.get_text(strip=True)
+                    if text:
+                        return text
+        return None
+
     def fetch_detail(self, stub: NoticeStub) -> Notice:
-        """상세 페이지에서 첨부를 추출해 Notice 를 만든다."""
+        """상세 페이지에서 첨부·자치구를 추출해 Notice 를 만든다."""
         resp = self.http.get(stub.detail_url)
         attachments = self.parse_attachments(resp.text)
+        gu = self.parse_gu(resp.text)
 
         raw = {
             "bbsId": stub.extra.get("bbsId"),
@@ -141,4 +159,7 @@ class YouthSeoulCrawler(BaseCrawler):
             "_detail_html": resp.text,
         }
         raw["normalized"] = normalize_raw(raw)
-        return Notice.from_stub(stub, source=self.key, attachments=attachments, raw=raw)
+        notice = Notice.from_stub(stub, source=self.key, attachments=attachments, raw=raw)
+        if gu:
+            notice.region = f"서울 {gu}"
+        return notice
