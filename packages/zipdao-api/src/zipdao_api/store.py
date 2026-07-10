@@ -74,6 +74,8 @@ def to_detail(notice: Notice, today: str) -> NoticeDetail:
         ],
         summary=n.get("summary"),
         eligibility=n.get("eligibility"),
+        winnerAnnounceDate=n.get("winnerAnnounceDate"),
+        supplyHouseholds=n.get("supplyHouseholds"),
         crawledAt=notice.crawled_at,
     )
 

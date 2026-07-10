@@ -44,6 +44,8 @@ PBL_PVT_ROW = {
     "RCRIT_PBLANC_DE": "20260707",
     "SUBSCRPT_RCEPT_BGNDE": "20260713",
     "SUBSCRPT_RCEPT_ENDDE": "20260714",
+    "PRZWNER_PRESNATN_DE": "20260716",
+    "TOT_SUPLY_HSHLDCO": 84,
     "SUBSCRPT_AREA_CODE_NM": "부산",
     "PBLANC_URL": "https://www.applyhome.co.kr/ai/aia/selectPRMOLttotPblancDetailView.do?houseManageNo=2026850038",
 }
@@ -56,6 +58,8 @@ def test_normalize_public_private_rent_row():
     assert n["supplyType"] == "공공지원민간임대"
     assert n["applyStart"] == "2026-07-13"
     assert n["applyEnd"] == "2026-07-14"
+    assert n["winnerAnnounceDate"] == "2026-07-16"
+    assert n["supplyHouseholds"] == 84
 
 
 def test_normalize_apt_row_still_works():

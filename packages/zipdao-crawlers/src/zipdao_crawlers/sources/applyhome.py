@@ -8,7 +8,7 @@ from collections.abc import Iterator
 from zipdao_core.dates import to_iso_date, year_of
 from zipdao_core.models import Notice, NoticeStub
 from zipdao_crawlers.base import DataGoKrCrawler
-from zipdao_crawlers.fields import _area, _first
+from zipdao_crawlers.fields import _area, _count, _first
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +48,8 @@ def normalize_raw(raw: dict) -> dict:
         "areaM2": min(areas) if areas else None,
         "applyStart": to_iso_date(_first(raw.get("RCEPT_BGNDE"), raw.get("SUBSCRPT_RCEPT_BGNDE"))),
         "applyEnd": to_iso_date(_first(raw.get("RCEPT_ENDDE"), raw.get("SUBSCRPT_RCEPT_ENDDE"))),
+        "winnerAnnounceDate": to_iso_date(raw.get("PRZWNER_PRESNATN_DE")),
+        "supplyHouseholds": _count(raw.get("TOT_SUPLY_HSHLDCO")),
         "summary": None,
         "eligibility": None,
     }

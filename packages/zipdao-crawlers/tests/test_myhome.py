@@ -65,6 +65,8 @@ def test_normalize_maps_rental_fields():
         "mtRntchrg": 267000,
         "beginDe": "20260618",
         "endDe": "20260702",
+        "przwnerPresnatnDe": "20261001",
+        "sumSuplyCo": 170,
     }
     n = normalize(item)
     assert n["supplyType"] == "국민임대"
@@ -73,6 +75,8 @@ def test_normalize_maps_rental_fields():
     assert n["applyStart"] == "2026-06-18"
     assert n["applyEnd"] == "2026-07-02"
     assert n["areaM2"] is None
+    assert n["winnerAnnounceDate"] == "2026-10-01"
+    assert n["supplyHouseholds"] == 170
 
 
 def test_normalize_units_fill_missing_price_and_area():

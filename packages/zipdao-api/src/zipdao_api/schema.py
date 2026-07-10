@@ -43,6 +43,8 @@ class NoticeDetail(NoticeSummary):
     attachments: list[Attachment]
     summary: str | None
     eligibility: str | None
+    winnerAnnounceDate: str | None = None
+    supplyHouseholds: int | None = None
     crawledAt: str | None
 
 

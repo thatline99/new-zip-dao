@@ -61,11 +61,13 @@ SCHEDULES = [
         "SBD_LGO_NM": "대구복현 행복주택",
         "SBSC_ACP_ST_DT": "2026.07.07",
         "SBSC_ACP_CLSG_DT": "2026.07.09",
+        "PZWR_ANC_DT": "2026.08.20",
     },
     {
         "SBD_LGO_NM": "대구읍내 행복주택",
         "SBSC_ACP_ST_DT": "2026.07.08",
         "SBSC_ACP_CLSG_DT": "2026.07.10",
+        "PZWR_ANC_DT": "2026.08.21",
     },
 ]
 UNITS = [
@@ -75,6 +77,7 @@ UNITS = [
         "DDO_AR": "16.74",
         "LS_GMY": "공고문 참조",
         "RFE": "공고문 참조",
+        "NOW_HSH_CNT": "10",
     },
     {
         "SBD_LGO_NM": "대구복현 행복주택",
@@ -82,6 +85,7 @@ UNITS = [
         "DDO_AR": "26.85",
         "LS_GMY": "공고문 참조",
         "RFE": "공고문 참조",
+        "NOW_HSH_CNT": "5",
     },
 ]
 
@@ -95,6 +99,8 @@ def test_normalize_detail_fills_dates_and_area():
     assert n["areaM2"] == 16.74  # 주택형 중 최소 전용면적
     assert n["depositKRW"] is None  # "공고문 참조"는 숫자가 아니므로 결측
     assert n["monthlyRentKRW"] is None
+    assert n["winnerAnnounceDate"] == "2026-08-20"  # 단지 중 최소 발표일
+    assert n["supplyHouseholds"] == 15  # 금회공급 세대수 합
 
 
 def test_normalize_detail_numeric_price_is_used():

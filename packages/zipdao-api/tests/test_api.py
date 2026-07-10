@@ -71,6 +71,8 @@ def _client(tmp_path: Path) -> TestClient:
                     "monthlyRentKRW": 250000,
                     "areaM2": 39,
                     "applyEnd": "2026-07-20",
+                    "winnerAnnounceDate": "2026-08-01",
+                    "supplyHouseholds": 120,
                 }
             },
             "crawled_at": "2026-06-24T05:00:00+00:00",
@@ -93,7 +95,10 @@ def test_get_notice(tmp_path: Path) -> None:
     c = _client(tmp_path)
     r = c.get("/notices/lh_apply/2026-1")
     assert r.status_code == 200
-    assert r.json()["supplyType"] == "행복주택"
+    body = r.json()
+    assert body["supplyType"] == "행복주택"
+    assert body["winnerAnnounceDate"] == "2026-08-01"
+    assert body["supplyHouseholds"] == 120
     assert c.get("/notices/lh_apply/none").status_code == 404
 
 

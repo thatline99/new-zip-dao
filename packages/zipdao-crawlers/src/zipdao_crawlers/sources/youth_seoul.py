@@ -32,6 +32,8 @@ def normalize_raw(raw: dict) -> dict:
         "areaM2": None,
         "applyStart": None,
         "applyEnd": to_iso_date(raw.get("applyDate")),
+        "winnerAnnounceDate": None,
+        "supplyHouseholds": None,
         "summary": None,
         "eligibility": None,
     }

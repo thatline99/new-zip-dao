@@ -8,7 +8,7 @@ from collections.abc import Iterator
 from zipdao_core.dates import to_iso_date
 from zipdao_core.models import Notice, NoticeStub
 from zipdao_crawlers.base import DataGoKrCrawler
-from zipdao_crawlers.fields import _area, _won
+from zipdao_crawlers.fields import _area, _count, _won
 
 logger = logging.getLogger(__name__)
 
@@ -51,9 +51,11 @@ def normalize(
     units = units or []
     starts = [d for d in (to_iso_date(s.get("SBSC_ACP_ST_DT")) for s in schedules) if d]
     closes = [d for d in (to_iso_date(s.get("SBSC_ACP_CLSG_DT")) for s in schedules) if d]
+    winners = [d for d in (to_iso_date(s.get("PZWR_ANC_DT")) for s in schedules) if d]
     areas = [a for a in (_area(u.get("DDO_AR")) for u in units) if a]
     deposits = [d for d in (_won(u.get("LS_GMY")) for u in units) if d]
     rents = [r for r in (_won(u.get("RFE")) for u in units) if r]
+    counts = [c for c in (_count(u.get("NOW_HSH_CNT")) for u in units) if c]
     return {
         "supplyType": item.get("AIS_TP_CD_NM") or item.get("UPP_AIS_TP_NM") or None,
         "depositKRW": min(deposits) if deposits else None,
@@ -61,6 +63,8 @@ def normalize(
         "areaM2": min(areas) if areas else None,
         "applyStart": min(starts) if starts else None,
         "applyEnd": (max(closes) if closes else None) or to_iso_date(item.get("CLSG_DT")),
+        "winnerAnnounceDate": min(winners) if winners else None,
+        "supplyHouseholds": sum(counts) if counts else None,
         "summary": None,
         "eligibility": None,
     }

@@ -13,6 +13,11 @@ def _won(value: object) -> int | None:
     return n if n and n > 0 else None
 
 
+def _count(value: object) -> int | None:
+    """양의 정수(세대수 등 개수) 값. 없거나 0 이하이면 None."""
+    return _won(value)
+
+
 _NUM_RE = re.compile(r"\s*(-?\d+(?:\.\d+)?)")
 
 
