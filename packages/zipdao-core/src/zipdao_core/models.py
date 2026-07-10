@@ -55,6 +55,8 @@ class Attachment:
     bytes: int | None = None
     downloaded_at: str | None = None
     note: str = ""
+    # True 면 파일을 내려받지 않고 URL 만 노출한다(예: robots 가 수집을 막는 LH 공고문)
+    link_only: bool = False
 
     def to_dict(self) -> dict:
         """dict(JSON 직렬화용)으로 변환한다."""

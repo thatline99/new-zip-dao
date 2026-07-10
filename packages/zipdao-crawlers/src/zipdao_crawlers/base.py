@@ -114,11 +114,13 @@ class CrawlEngine:
             notice.detail_html_path = self.storage.save_detail_html(ndir, detail_html)
 
         for att in notice.attachments:
+            if not att.filename:
+                att.filename = _filename_from_url(att.url)
+            if att.kind is AssetKind.OTHER:
+                att.kind = AssetKind.from_filename(att.filename)
+            if att.link_only:
+                continue
             try:
-                if not att.filename:
-                    att.filename = _filename_from_url(att.url)
-                if att.kind is AssetKind.OTHER:
-                    att.kind = AssetKind.from_filename(att.filename)
                 data = self.crawler.http.get(att.url).content
                 self.storage.save_asset(ndir, att, data)
                 stats.assets_downloaded += 1

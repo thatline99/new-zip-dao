@@ -103,6 +103,55 @@ def test_normalize_detail_fills_dates_and_area():
     assert n["supplyHouseholds"] == 15  # 금회공급 세대수 합
 
 
+def test_fetch_detail_exposes_notice_files_as_link_only():
+    from zipdao_core.models import NoticeStub
+    from zipdao_crawlers.sources.lh_apply import LhApplyCrawler
+
+    dtl_payload = [
+        {"dsSplScdl": SCHEDULES},
+        {
+            "dsAhflInfo": [
+                {
+                    "AHFL_URL": "https://apply.lh.or.kr/lhapply/lhFile.do?fileid=1",
+                    "CMN_AHFL_NM": "모집공고문.pdf",
+                    "SL_PAN_AHFL_DS_CD_NM": "공고문(PDF)",
+                },
+                {"CMN_AHFL_NM": "URL 없는 행은 제외"},
+            ]
+        },
+    ]
+    spl_payload = [{"dsList01": UNITS}]
+
+    class FakeHttp:
+        def get(self, url, params=None):
+            payload = dtl_payload if "DtlInfo" in url else spl_payload
+
+            class R:
+                @staticmethod
+                def json():
+                    return payload
+
+            return R()
+
+    crawler = LhApplyCrawler.__new__(LhApplyCrawler)
+    crawler.http = FakeHttp()
+    crawler._key = "test-key"
+    stub = NoticeStub(
+        notice_id="2015122300020365",
+        title="고령자복지주택 모집",
+        detail_url="https://apply.lh.or.kr/...",
+        posted_date="2026-07-06",
+        extra={"PAN_ID": "2015122300020365", "UPP_AIS_TP_CD": "06"},
+    )
+    notice = crawler.fetch_detail(stub)
+    assert len(notice.attachments) == 1
+    att = notice.attachments[0]
+    assert att.link_only is True
+    assert att.filename == "모집공고문.pdf"
+    assert att.url.endswith("fileid=1")
+    assert notice.raw["normalized"]["applyStart"] == "2026-07-07"  # 일정 파싱 회귀 없음
+
+
 def test_normalize_detail_numeric_price_is_used():
     from zipdao_crawlers.sources.lh_apply import normalize
 

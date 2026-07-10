@@ -6,7 +6,7 @@ import logging
 from collections.abc import Iterator
 
 from zipdao_core.dates import to_iso_date
-from zipdao_core.models import Notice, NoticeStub
+from zipdao_core.models import Attachment, Notice, NoticeStub
 from zipdao_crawlers.base import DataGoKrCrawler
 from zipdao_crawlers.fields import _area, _count, _won
 
@@ -134,14 +134,16 @@ class LhApplyCrawler(DataGoKrCrawler):
         all_cnt = int(rows[0].get("ALL_CNT") or 0) if rows else 0
         return rows, all_cnt
 
-    def _fetch_notice_detail(self, row: dict) -> tuple[list[dict], list[dict]]:
-        """공고별 청약 일정(상세)·주택형 공급정보를 가져온다. 실패해도 크롤은 계속."""
+    def _fetch_notice_detail(self, row: dict) -> tuple[list[dict], list[dict], list[dict]]:
+        """공고별 청약 일정·공고문 첨부(상세)와 주택형 공급정보를 가져온다. 실패해도 크롤은 계속."""
         params = {"serviceKey": self._key, "PG_SZ": 100, "PAGE": 1, "PAN_ID": row.get("PAN_ID")}
         for k in _DETAIL_PARAM_KEYS:
             if row.get(k):
                 params[k] = row[k]
         try:
-            schedules = _block(self.http.get(DTL_EP, params=params).json(), "dsSplScdl")
+            dtl = self.http.get(DTL_EP, params=params).json()
+            schedules = _block(dtl, "dsSplScdl")
+            files = _block(dtl, "dsAhflInfo")
             payload = self.http.get(SPL_EP, params=params).json()
             units = (
                 _block(payload, "dsList01")
@@ -150,16 +152,26 @@ class LhApplyCrawler(DataGoKrCrawler):
             )
         except Exception:
             logger.warning("LH 상세/공급정보 조회 실패: PAN_ID=%s", row.get("PAN_ID"))
-            return [], []
-        return schedules, units
+            return [], [], []
+        return schedules, units, files
 
     def fetch_detail(self, stub: NoticeStub) -> Notice:
-        """공고 raw 데이터(+단지 일정/공급정보)를 정규화해 Notice 를 만든다."""
+        """공고 raw 데이터(+단지 일정/공급정보/공고문 첨부)를 정규화해 Notice 를 만든다."""
         raw = dict(stub.extra)
-        schedules, units = self._fetch_notice_detail(raw)
+        schedules, units, files = self._fetch_notice_detail(raw)
         if schedules:
             raw["일정목록"] = schedules
         if units:
             raw["공급목록"] = units
         raw["normalized"] = normalize(raw, schedules, units)
-        return Notice.from_stub(stub, source=self.key, raw=raw)
+        # robots 가 lhFile.do 수집을 막고 있어 파일은 받지 않고 공식 URL 만 노출한다
+        attachments = [
+            Attachment(
+                url=f["AHFL_URL"],
+                filename=(f.get("CMN_AHFL_NM") or "").strip(),
+                link_only=True,
+            )
+            for f in files
+            if f.get("AHFL_URL")
+        ]
+        return Notice.from_stub(stub, source=self.key, attachments=attachments, raw=raw)
