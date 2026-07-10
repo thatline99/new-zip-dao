@@ -131,26 +131,75 @@ def test_normalize_for_uses_stored_units():
 def test_iter_notices_dedupes_preferring_unit_matched(monkeypatch):
     from zipdao_crawlers.sources import myhome as mod
 
-    # 광역 공고가 두 시군구 조회에 중복 등장 — 두 번째 지역에서만 단지(pnu) 매칭 성공
-    item = {
+    # 한 공고가 단지별 여러 행으로 옴 — 두 번째 행(B시)에서만 단지(pnu) 매칭 성공
+    row_a = {
         "pblancId": "P1",
         "pblancNm": "광역 공고",
         "rcritPblancDe": "20260701",
-        "pnu": "PNU1",
+        "pnu": "PNU-A",
         "brtcNm": "경기도",
         "signguNm": "A시",
     }
+    row_b = {**row_a, "pnu": "PNU1", "signguNm": "B시"}
     monkeypatch.setattr(
         mod, "REGIONS", [("41", "100", "경기도", "A시"), ("41", "200", "경기도", "B시")]
     )
     crawler = mod.MyhomeCrawler.__new__(mod.MyhomeCrawler)
-    crawler._fetch_region = lambda brtc, signgu: [dict(item)]
+    crawler._fetch_all = lambda ep, rows, extra=None: [row_a, row_b]
     complexes = {"100": [], "200": [{"pnu": "PNU1", "suplyPrvuseAr": 21.5}]}
     crawler._fetch_complexes = lambda brtc, signgu: complexes[signgu]
 
     stubs = list(crawler.iter_notices(2026, None))
     assert len(stubs) == 1  # 중복 제거
     assert stubs[0].extra["units"] == [{"pnu": "PNU1", "suplyPrvuseAr": 21.5}]  # 매칭본 보존
+
+
+def test_iter_notices_falls_back_to_region_loop_when_nationwide_empty(monkeypatch):
+    from zipdao_crawlers.sources import myhome as mod
+
+    monkeypatch.setattr(mod, "REGIONS", [("41", "100", "경기도", "A시")])
+    crawler = mod.MyhomeCrawler.__new__(mod.MyhomeCrawler)
+    row = {
+        "pblancId": "P9",
+        "pblancNm": "폴백 공고",
+        "rcritPblancDe": "20260701",
+        "brtcNm": "경기도",
+        "signguNm": "A시",
+    }
+    calls: list[dict | None] = []
+
+    def fake_fetch_all(ep, rows, extra=None):
+        calls.append(extra)
+        return [] if extra is None else [row]
+
+    crawler._fetch_all = fake_fetch_all
+    crawler._fetch_complexes = lambda brtc, signgu: []
+
+    stubs = list(crawler.iter_notices(None, None))
+    assert calls[0] is None  # 전국 조회 먼저
+    assert {"brtcCode": "41", "signguCode": "100"} in calls  # 그다음 지역 순회
+    assert len(stubs) == 1 and stubs[0].notice_id == "P9"
+
+
+def test_iter_notices_unknown_region_skips_complex_lookup(monkeypatch):
+    from zipdao_crawlers.sources import myhome as mod
+
+    monkeypatch.setattr(mod, "REGIONS", [("41", "100", "경기도", "A시")])
+    crawler = mod.MyhomeCrawler.__new__(mod.MyhomeCrawler)
+    row = {
+        "pblancId": "P2",
+        "pblancNm": "미등록 지역 공고",
+        "rcritPblancDe": "20260701",
+        "brtcNm": "새도시",
+        "signguNm": "X구",
+    }
+    crawler._fetch_all = lambda ep, rows, extra=None: [row] if extra is None else []
+    called: list[tuple] = []
+    crawler._fetch_complexes = lambda *a: called.append(a) or []
+
+    stubs = list(crawler.iter_notices(None, None))
+    assert stubs[0].extra["units"] == []
+    assert called == []  # 코드 매핑 없는 지역은 단지 조회 생략
 
 
 def test_normalize_zero_won_is_missing():

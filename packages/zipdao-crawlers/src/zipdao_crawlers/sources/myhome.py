@@ -77,46 +77,63 @@ class MyhomeCrawler(DataGoKrCrawler):
     base_url = "https://www.myhome.go.kr"
 
     def iter_notices(self, since: int | None, until: int | None) -> Iterator[NoticeStub]:
-        """지역코드별로 공고 요약을 순회한다(단지 세대정보를 함께 붙인다).
+        """전국 공고를 한 번에 조회하고 단지(HWSPR04) 세대정보를 붙인다.
 
-        광역 공고는 여러 시군구 조회에 중복 등장하므로 공고 ID 로 중복을 제거하되,
-        단지(pnu) 매칭에 성공한 스텁을 우선 보존한다 — 마지막 쓰기가 매칭 결과를
-        덮어써 면적·금액을 잃는 것을 막는다.
+        지역코드를 생략하면 전국 조회가 되므로 시군구 250여 회 순회가 필요 없다.
+        비공식 동작일 수 있어 비어 있으면 시군구 순회로 폴백한다.
+        한 공고가 단지(houseSn)별 여러 행으로 오므로 공고 ID 로 중복을 제거하되,
+        단지(pnu) 매칭에 성공한 행을 우선 보존한다.
         """
-        best: dict[str, NoticeStub] = {}
-        for brtc, signgu, _sido_nm, _sgg_nm in REGIONS:
-            picked: list[tuple[dict, str | None]] = []
-            for item in self._fetch_region(brtc, signgu):
-                posted = to_iso_date(item.get("rcritPblancDe"))
-                year = year_of(posted)
-                if since is not None and (year is None or year < since):
-                    continue
-                if until is not None and (year is None or year > until):
-                    continue
-                picked.append((item, posted))
-            if not picked:
-                continue
-            complexes = self._fetch_complexes(brtc, signgu)
-            for item, posted in picked:
-                notice_id = str(item.get("pblancId") or "").strip()
-                if not notice_id:
-                    continue
-                stub = NoticeStub(
-                    notice_id=notice_id,
-                    title=(item.get("pblancNm") or "").strip(),
-                    detail_url=(item.get("pcUrl") or item.get("url") or "").strip(),
-                    posted_date=posted,
-                    category=item.get("suplyTyNm"),
-                    region=f"{item.get('brtcNm', '')} {item.get('signguNm', '')}".strip(),
-                    extra={"item": item, "units": _match_units(item, complexes)},
+        items = self._fetch_all(LIST_EP, NUM_ROWS)
+        if not items:
+            logger.warning("마이홈 전국 조회가 비어 있음 — 시군구 순회로 폴백")
+            items = [
+                it
+                for brtc, signgu, _sido, _sgg in REGIONS
+                for it in self._fetch_all(
+                    LIST_EP, NUM_ROWS, {"brtcCode": brtc, "signguCode": signgu}
                 )
-                prev = best.get(notice_id)
-                if prev is None or (not prev.extra.get("units") and stub.extra.get("units")):
-                    best[notice_id] = stub
+            ]
+
+        region_codes = {(sido, sgg): (brtc, signgu) for brtc, signgu, sido, sgg in REGIONS}
+        complexes_cache: dict[tuple[str, str], list[dict]] = {}
+        best: dict[str, NoticeStub] = {}
+        for item in items:
+            posted = to_iso_date(item.get("rcritPblancDe"))
+            year = year_of(posted)
+            if since is not None and (year is None or year < since):
+                continue
+            if until is not None and (year is None or year > until):
+                continue
+            notice_id = str(item.get("pblancId") or "").strip()
+            if not notice_id:
+                continue
+            key = ((item.get("brtcNm") or "").strip(), (item.get("signguNm") or "").strip())
+            codes = region_codes.get(key)
+            if codes is None:
+                units: list[dict] = []
+            else:
+                if codes not in complexes_cache:
+                    complexes_cache[codes] = self._fetch_complexes(*codes)
+                units = _match_units(item, complexes_cache[codes])
+            stub = NoticeStub(
+                notice_id=notice_id,
+                title=(item.get("pblancNm") or "").strip(),
+                detail_url=(item.get("pcUrl") or item.get("url") or "").strip(),
+                posted_date=posted,
+                category=item.get("suplyTyNm"),
+                region=f"{item.get('brtcNm', '')} {item.get('signguNm', '')}".strip(),
+                extra={"item": item, "units": units},
+            )
+            prev = best.get(notice_id)
+            if prev is None or (not prev.extra.get("units") and stub.extra.get("units")):
+                best[notice_id] = stub
         yield from best.values()
 
-    def _fetch_all(self, endpoint: str, brtc: str, signgu: str, rows_per_page: int) -> list[dict]:
-        """지역코드로 endpoint 를 페이지 순회해 전체 행을 모은다."""
+    def _fetch_all(
+        self, endpoint: str, rows_per_page: int, extra_params: dict | None = None
+    ) -> list[dict]:
+        """endpoint 를 페이지 순회해 전체 행을 모은다(지역코드는 extra_params 로)."""
         rows: list[dict] = []
         page = 1
         while True:
@@ -124,10 +141,9 @@ class MyhomeCrawler(DataGoKrCrawler):
                 endpoint,
                 params={
                     "serviceKey": self._key,
-                    "brtcCode": brtc,
-                    "signguCode": signgu,
                     "numOfRows": rows_per_page,
                     "pageNo": page,
+                    **(extra_params or {}),
                 },
             )
             items, total = self.parse_items(resp.json())
@@ -139,13 +155,12 @@ class MyhomeCrawler(DataGoKrCrawler):
             page += 1
         return rows
 
-    def _fetch_region(self, brtc: str, signgu: str) -> list[dict]:
-        return self._fetch_all(LIST_EP, brtc, signgu, NUM_ROWS)
-
     def _fetch_complexes(self, brtc: str, signgu: str) -> list[dict]:
         """지역의 임대주택 단지(HWSPR04) 목록을 가져온다. 실패해도 크롤은 계속(빈 목록)."""
         try:
-            return self._fetch_all(COMPLEX_EP, brtc, signgu, COMPLEX_ROWS)
+            return self._fetch_all(
+                COMPLEX_EP, COMPLEX_ROWS, {"brtcCode": brtc, "signguCode": signgu}
+            )
         except Exception:
             logger.warning("단지정보(HWSPR04) 조회 실패: brtc=%s signgu=%s", brtc, signgu)
             return []
