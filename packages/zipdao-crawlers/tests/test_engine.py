@@ -40,6 +40,24 @@ class _OneNoticeCrawler(BaseCrawler):
         )
 
 
+class _DetailFailCrawler(_OneNoticeCrawler):
+    def fetch_detail(self, stub):
+        raise RuntimeError("상세 API 403")
+
+
+def test_force_recrawl_keeps_manifest_when_detail_fails(tmp_path: Path):
+    storage = Storage(tmp_path / "raw")
+    CrawlEngine(_OneNoticeCrawler(_NoDownloadHttp()), storage).run()
+    manifest_path = tmp_path / "raw" / "fake" / "2026" / "N1" / "manifest.json"
+    before = manifest_path.read_text(encoding="utf-8")
+
+    stats = CrawlEngine(_DetailFailCrawler(_NoDownloadHttp()), storage).run(force=True)
+
+    assert stats.notices_new == 0
+    assert len(stats.errors) == 1
+    assert manifest_path.read_text(encoding="utf-8") == before
+
+
 def test_engine_skips_download_for_link_only_attachments(tmp_path: Path):
     engine = CrawlEngine(_OneNoticeCrawler(_NoDownloadHttp()), Storage(tmp_path / "raw"))
     stats = engine.run()

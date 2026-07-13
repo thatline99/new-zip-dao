@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Iterator
 
 from zipdao_core.dates import to_iso_date
 from zipdao_core.models import Attachment, Notice, NoticeStub
 from zipdao_crawlers.base import DataGoKrCrawler
 from zipdao_crawlers.fields import _area, _count, _won
-
-logger = logging.getLogger(__name__)
 
 LIST_EP = "http://apis.data.go.kr/B552555/lhLeaseNoticeInfo1/lhLeaseNoticeInfo1"
 DTL_EP = "http://apis.data.go.kr/B552555/lhLeaseNoticeDtlInfo1/getLeaseNoticeDtlInfo1"
@@ -135,24 +132,18 @@ class LhApplyCrawler(DataGoKrCrawler):
         return rows, all_cnt
 
     def _fetch_notice_detail(self, row: dict) -> tuple[list[dict], list[dict], list[dict]]:
-        """공고별 청약 일정·공고문 첨부(상세)와 주택형 공급정보를 가져온다. 실패해도 크롤은 계속."""
+        """공고별 청약 일정·첨부(상세)와 주택형 공급정보를 가져온다. 실패 시 예외를 올린다."""
         params = {"serviceKey": self._key, "PG_SZ": 100, "PAGE": 1, "PAN_ID": row.get("PAN_ID")}
         for k in _DETAIL_PARAM_KEYS:
             if row.get(k):
                 params[k] = row[k]
-        try:
-            dtl = self.http.get(DTL_EP, params=params).json()
-            schedules = _block(dtl, "dsSplScdl")
-            files = _block(dtl, "dsAhflInfo")
-            payload = self.http.get(SPL_EP, params=params).json()
-            units = (
-                _block(payload, "dsList01")
-                or _block(payload, "dsList02")
-                or _block(payload, "dsList")
-            )
-        except Exception:
-            logger.warning("LH 상세/공급정보 조회 실패: PAN_ID=%s", row.get("PAN_ID"))
-            return [], [], []
+        dtl = self.http.get(DTL_EP, params=params).json()
+        schedules = _block(dtl, "dsSplScdl")
+        files = _block(dtl, "dsAhflInfo")
+        payload = self.http.get(SPL_EP, params=params).json()
+        units = (
+            _block(payload, "dsList01") or _block(payload, "dsList02") or _block(payload, "dsList")
+        )
         return schedules, units, files
 
     def fetch_detail(self, stub: NoticeStub) -> Notice:

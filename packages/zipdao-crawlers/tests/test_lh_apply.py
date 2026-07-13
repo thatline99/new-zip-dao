@@ -152,6 +152,29 @@ def test_fetch_detail_exposes_notice_files_as_link_only():
     assert notice.raw["normalized"]["applyStart"] == "2026-07-07"  # 일정 파싱 회귀 없음
 
 
+def test_fetch_detail_propagates_detail_api_failure():
+    import pytest
+
+    from zipdao_core.models import NoticeStub
+
+    class BrokenHttp:
+        def get(self, url, params=None):
+            raise RuntimeError("403 Forbidden")
+
+    crawler = LhApplyCrawler.__new__(LhApplyCrawler)
+    crawler.http = BrokenHttp()
+    crawler._key = "test-key"
+    stub = NoticeStub(
+        notice_id="2015122300020365",
+        title="t",
+        detail_url="u",
+        posted_date="2026-07-06",
+        extra={"PAN_ID": "2015122300020365"},
+    )
+    with pytest.raises(RuntimeError):
+        crawler.fetch_detail(stub)
+
+
 def test_normalize_detail_numeric_price_is_used():
     from zipdao_crawlers.sources.lh_apply import normalize
 

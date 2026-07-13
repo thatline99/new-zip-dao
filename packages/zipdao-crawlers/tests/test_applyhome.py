@@ -140,7 +140,9 @@ def test_fetch_detail_attaches_model_rows():
     assert params["cond[HOUSE_MANAGE_NO::EQ]"] == "2026850038"
 
 
-def test_fetch_detail_survives_model_api_failure():
+def test_fetch_detail_propagates_model_api_failure():
+    import pytest
+
     from zipdao_core.models import NoticeStub
     from zipdao_crawlers.sources.applyhome import _SVC
 
@@ -157,6 +159,5 @@ def test_fetch_detail_survives_model_api_failure():
         detail_url="u",
         extra={**PBL_PVT_ROW, "_endpoint": f"{_SVC}/getPblPvtRentLttotPblancDetail"},
     )
-    notice = crawler.fetch_detail(stub)
-    assert "주택형목록" not in notice.raw
-    assert notice.raw["normalized"]["areaM2"] is None
+    with pytest.raises(RuntimeError):
+        crawler.fetch_detail(stub)

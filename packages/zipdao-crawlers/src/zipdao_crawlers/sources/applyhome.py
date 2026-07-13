@@ -2,15 +2,12 @@
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Iterator
 
 from zipdao_core.dates import to_iso_date, year_of
 from zipdao_core.models import Notice, NoticeStub
 from zipdao_crawlers.base import DataGoKrCrawler
 from zipdao_crawlers.fields import _area, _count, _first
-
-logger = logging.getLogger(__name__)
 
 _SVC = "https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1"
 # (오퍼레이션 URL, 이름) — APT 는 분양 위주지만 분양전환 가능임대가 섞여 있고,
@@ -119,26 +116,22 @@ class ApplyhomeCrawler(DataGoKrCrawler):
         return rows, total
 
     def _fetch_models(self, item: dict) -> list[dict]:
-        """공고의 주택형별 행(Mdl API)을 가져온다. 실패해도 수집은 계속(빈 목록)."""
+        """공고의 주택형별 행(Mdl API)을 가져온다. 실패 시 예외를 올린다."""
         mdl_ep = _MDL_EPS.get(item.get("_endpoint") or "")
         manage_no = str(item.get("HOUSE_MANAGE_NO") or "").strip()
         if not mdl_ep or not manage_no:
             return []
-        try:
-            resp = self.http.get(
-                mdl_ep,
-                params={
-                    "serviceKey": self._key,
-                    "page": 1,
-                    "perPage": PER_PAGE,
-                    "cond[HOUSE_MANAGE_NO::EQ]": manage_no,
-                },
-            )
-            data = resp.json()
-            return list(data.get("data") or []) if isinstance(data, dict) else []
-        except Exception:
-            logger.warning("주택형별 상세(Mdl) 조회 실패: HOUSE_MANAGE_NO=%s", manage_no)
-            return []
+        resp = self.http.get(
+            mdl_ep,
+            params={
+                "serviceKey": self._key,
+                "page": 1,
+                "perPage": PER_PAGE,
+                "cond[HOUSE_MANAGE_NO::EQ]": manage_no,
+            },
+        )
+        data = resp.json()
+        return list(data.get("data") or []) if isinstance(data, dict) else []
 
     def fetch_detail(self, stub: NoticeStub) -> Notice:
         """공고 raw 데이터(+주택형별 상세)를 정규화해 Notice 를 만든다."""

@@ -245,6 +245,28 @@ def test_iter_notices_unknown_region_skips_complex_lookup(monkeypatch):
     assert called == []  # 코드 매핑 없는 지역은 단지 조회 생략
 
 
+def test_iter_notices_skips_region_when_complex_fetch_fails(monkeypatch):
+    from zipdao_crawlers.sources import myhome as mod
+
+    monkeypatch.setattr(mod, "REGIONS", [("41", "100", "경기도", "A시")])
+    crawler = mod.MyhomeCrawler.__new__(mod.MyhomeCrawler)
+    row = {
+        "pblancId": "P3",
+        "pblancNm": "단지 조회 실패 지역 공고",
+        "rcritPblancDe": "20260701",
+        "brtcNm": "경기도",
+        "signguNm": "A시",
+    }
+    crawler._fetch_all = lambda ep, rows, extra=None: [row] if extra is None else []
+
+    def boom(brtc, signgu):
+        raise RuntimeError("HWSPR04 403")
+
+    crawler._fetch_complexes = boom
+
+    assert list(crawler.iter_notices(None, None)) == []
+
+
 def test_normalize_zero_won_is_missing():
     from zipdao_crawlers.sources.myhome import normalize
 

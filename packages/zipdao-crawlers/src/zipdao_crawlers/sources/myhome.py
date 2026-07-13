@@ -133,8 +133,18 @@ class MyhomeCrawler(DataGoKrCrawler):
                 units: list[dict] = []
             else:
                 if codes not in complexes_cache:
-                    complexes_cache[codes] = self._fetch_complexes(*codes)
-                units = _match_units(item, complexes_cache[codes])
+                    try:
+                        complexes_cache[codes] = self._fetch_complexes(*codes)
+                    except Exception:
+                        complexes_cache[codes] = None
+                        logger.warning(
+                            "단지정보(HWSPR04) 조회 실패: brtc=%s signgu=%s — 지역 공고 저장 생략",
+                            *codes,
+                        )
+                cached = complexes_cache[codes]
+                if cached is None:
+                    continue
+                units = _match_units(item, cached)
             stub = NoticeStub(
                 notice_id=notice_id,
                 title=(item.get("pblancNm") or "").strip(),
@@ -175,14 +185,8 @@ class MyhomeCrawler(DataGoKrCrawler):
         return rows
 
     def _fetch_complexes(self, brtc: str, signgu: str) -> list[dict]:
-        """지역의 임대주택 단지(HWSPR04) 목록을 가져온다. 실패해도 크롤은 계속(빈 목록)."""
-        try:
-            return self._fetch_all(
-                COMPLEX_EP, COMPLEX_ROWS, {"brtcCode": brtc, "signguCode": signgu}
-            )
-        except Exception:
-            logger.warning("단지정보(HWSPR04) 조회 실패: brtc=%s signgu=%s", brtc, signgu)
-            return []
+        """지역의 임대주택 단지(HWSPR04) 목록을 가져온다. 실패 시 예외를 올린다."""
+        return self._fetch_all(COMPLEX_EP, COMPLEX_ROWS, {"brtcCode": brtc, "signguCode": signgu})
 
     @staticmethod
     def parse_items(data: object) -> tuple[list[dict], int]:
