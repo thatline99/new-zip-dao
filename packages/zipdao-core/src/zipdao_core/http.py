@@ -18,7 +18,7 @@ class HttpClient:
         *,
         user_agent: str,
         timeout: float = 30.0,
-        rate_limit_per_sec: float = 2.0,
+        rate_limit_per_sec: float = 1.0,
         max_retries: int = 3,
     ) -> None:
         self._min_interval = 1.0 / rate_limit_per_sec if rate_limit_per_sec > 0 else 0.0

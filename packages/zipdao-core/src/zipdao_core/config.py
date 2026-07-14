@@ -51,6 +51,6 @@ def load_settings(dotenv: Path | None = None) -> Settings:
             "Mozilla/5.0 (compatible; new-zip-dao/0.1; +https://github.com/thatline99/new-zip-dao)",
         ),
         request_timeout=float(os.environ.get("CRAWL_TIMEOUT", "30")),
-        rate_limit_per_sec=float(os.environ.get("CRAWL_RATE_LIMIT", "2")),
+        rate_limit_per_sec=float(os.environ.get("CRAWL_RATE_LIMIT", "1")),
         data_go_kr_service_key=os.environ.get("DATA_GO_KR_SERVICE_KEY") or None,
     )
