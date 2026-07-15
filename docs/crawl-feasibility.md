@@ -7,15 +7,15 @@
 
 | key | 사이트 | 판정 | 채널·근거 |
 | --- | --- | --- | --- |
-| `lh_apply` | LH청약플러스 | ✅ API(메타만) | 공공데이터 API(15058530). ⚠️ 과거 이력·원본 PDF 불가 |
-| `sh_ish` | SH 인터넷청약 | ✅ 게시판 크롤 | list.do POST 순회 + view.do 상세 + innoFD.do 첨부. 다년 이력·원본 PDF |
-| `applyhome` | 청약홈 | ✅ API | odcloud API(15098547). 2020~ 이력 2,804건. 원본 PDF 불가(SPA) |
-| `youth_seoul` | 서울 청년안심주택 | ✅ 게시판 크롤 | bbsListJson AJAX + 서버렌더 상세 + fileDown.do 첨부 |
-| `gh` | 경기주택도시공사 | ✅ API(이력만) | 사이트는 robots 전면 차단 → odcloud API(15119414). ⚠️ 연 1회 스냅샷 |
-| `udc` | 울산도시공사 | ✅ 게시판 크롤 | umca.co.kr bbs/list.do + FileDown.do 첨부 |
-| `gndc` | 경남개발공사 | ✅ 게시판 크롤 | getBbsArticleList.do JSON + download.do 첨부 |
-| `myhome` | 마이홈포털 | ✅ API | 공공주택 API(15108420). 보증금·월세·면적 구조화 데이터 |
-| `daejeon` | 대전도시공사 | ⛔ WAF | 자동 요청을 400 "Request Blocked" 로 차단. 협의/공식 채널 필요 |
+| `lh_apply` | LH청약플러스 | API 구현(메타만) | 공공데이터 API(15058530). 한계: 과거 이력·원본 PDF 불가 |
+| `sh_ish` | SH 인터넷청약 | 게시판 크롤 구현 | list.do POST 순회 + view.do 상세 + innoFD.do 첨부. 다년 이력·원본 PDF |
+| `applyhome` | 청약홈 | API 구현 | odcloud API(15098547). 2020~ 이력 2,804건. 원본 PDF 불가(SPA) |
+| `youth_seoul` | 서울 청년안심주택 | 게시판 크롤 구현 | bbsListJson AJAX + 서버렌더 상세 + fileDown.do 첨부 |
+| `gh` | 경기주택도시공사 | API 구현(이력만) | 사이트는 robots 전면 차단 → odcloud API(15119414). 한계: 연 1회 스냅샷 |
+| `udc` | 울산도시공사 | 게시판 크롤 구현 | umca.co.kr bbs/list.do + FileDown.do 첨부 |
+| `gndc` | 경남개발공사 | 게시판 크롤 구현 | getBbsArticleList.do JSON + download.do 첨부 |
+| `myhome` | 마이홈포털 | API 구현 | 공공주택 API(15108420). 보증금·월세·면적 구조화 데이터 |
+| `daejeon` | 대전도시공사 | 차단(WAF) | 자동 요청을 400 "Request Blocked" 로 차단. 협의/공식 채널 필요 |
 
 모든 구현 소스는 `run <key> --limit N` 실수집으로 파일 무결성(sha256)까지 검증되어 있다.
 
@@ -25,7 +25,7 @@
 - 엔드포인트: `http://apis.data.go.kr/B552555/lhLeaseNoticeInfo1/lhLeaseNoticeInfo1`
 - 필수 파라미터: `ServiceKey, PG_SZ, PAGE, PAN_NT_ST_DT(YYYY.MM.DD), CLSG_DT`. 유형 `UPP_AIS_TP_CD`(05 분양·06 임대·13 주거복지·39 신혼희망).
 - 수집 범위: 현재 게시 중 공고(약 335건)의 메타데이터 + `DTL_URL`·상태·지역·일정.
-- ⚠️ 한계:
+- 한계:
   - **과거 이력 불가** — 날짜 파라미터를 과거로 줘도 현재 게시분만 반환(스냅샷 API).
   - **원본 PDF/HWP 불가** — 첨부 경로 `/lhapply/lhFile.do` 가 robots 차단 영역. 링크만 노출(`link_only`).
 - LH 는 "현재 공고 메타데이터"가 합법 채널의 천장. 과거 공고문 아카이브는 별도 협의 필요.
@@ -55,7 +55,7 @@
   `GET https://api.odcloud.kr/api/15119414/v1/uddi:{판별 UDDI}`. 연도판 3개(2023·2024·2025), 2017년~ 이력.
 - 필드: 공고명·게시일자·접수시작/종료일자·당첨자발표일자·입주예정년월·주택관리번호 등.
   공고문 PDF·상세 URL 없음(공고 페이지가 robots 차단 영역).
-- ⚠️ **연 1회(매년 8월) 스냅샷 갱신** — 최신 공고는 이 채널로 못 받는다. 새 판이 나오면
+- **연 1회(매년 8월) 스냅샷 갱신** — 최신 공고는 이 채널로 못 받는다. 새 판이 나오면
   `sources/gh.py` 의 `SNAPSHOTS` 에 UDDI 를 추가한다.
 - 서비스키로 데이터셋 활용신청이 되어 있어야 호출 가능(미신청 시 401).
 - 스냅샷 간 중복 공고는 최신판부터 순회 + 주택관리번호 기반 notice_id 로 엔진이 스킵.

@@ -36,7 +36,7 @@
 ## 구현 진행
 
 각 소스는 실측(목록/페이지네이션/상세/첨부 셀렉터 확인) 후 `sources/<key>.py` 에 구현하고
-`registry.py` 의 `SourceInfo(crawler=...)` 에 연결한다. 진행 상태는 `zipdao-crawl list` 의 ✅/⬜ 로 확인.
+`registry.py` 의 `SourceInfo(crawler=...)` 에 연결한다. 진행 상태는 `zipdao-crawl list` 로 확인.
 
 **9곳 중 8곳 구현 완료** — 미구현은 `daejeon`(WAF 차단, 협의 필요)뿐.
 사이트별 실측 판정·엔드포인트·한계는 [crawl-feasibility.md](crawl-feasibility.md) 참고.

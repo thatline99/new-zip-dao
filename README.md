@@ -31,7 +31,7 @@ new-zip-dao/
 
 ```bash
 uv sync                              # 의존성 설치(워크스페이스 전체)
-uv run zipdao-crawl list             # 등록된 소스 목록 + 구현 상태(✅/⬜)
+uv run zipdao-crawl list             # 등록된 소스 목록 + 구현 상태
 uv run zipdao-crawl run lh_apply --since 2021 --until 2026   # 한 소스 수집
 uv run zipdao-crawl run lh_apply --limit 3                   # 소량 시범 수집
 uv run zipdao-crawl normalize all    # 기존 manifest 에 raw.normalized 재생성(백필)
