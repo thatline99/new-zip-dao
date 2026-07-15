@@ -136,17 +136,55 @@ _PROV_VARIANTS: list[tuple[str, tuple[str, ...]]] = [
 ]
 
 
+# 개칭된 구의 신·구명을 함께 담아 어느 이름으로 검색해도 맞게 한다(2026-07 인천 서구→서해구).
+_REGION_EXPANSIONS = [
+    ("인천 서해구", "인천 서해구 서구"),
+    ("인천 서구", "인천 서구 서해구"),
+]
+
+
 def _canonicalize_region(s: str) -> str:
     for short, variants in _PROV_VARIANTS:
         for v in variants:
             s = s.replace(v, short)
+    for old, expanded in _REGION_EXPANSIONS:
+        if old in s and expanded not in s:
+            s = s.replace(old, expanded)
     return s
 
 
+def _region_query_tokens(region: str | None) -> list[str]:
+    """지역 질의를 표준화해 토큰 목록으로 만든다."""
+    return _canonicalize_region(region).split() if region else []
+
+
+def _matches_region(tokens: list[str], region: str | None) -> bool:
+    """질의 토큰이 모두 공고 지역 문자열에 들어 있으면 매칭으로 본다."""
+    if not tokens:
+        return True
+    hay = _canonicalize_region(region or "")
+    return all(t in hay for t in tokens)
+
+
+_SOURCE_TAGS = {
+    "youth_seoul": "청년안심주택 청년",
+    "lh_apply": "lh",
+    "applyhome": "청약홈",
+    "myhome": "마이홈",
+}
+
+
 def _haystack(d: NoticeDetail) -> str:
-    """검색 대상 텍스트(제목·지역·분류·공급유형·요약)를 하나로 합친다."""
+    """검색 대상 텍스트(제목·지역·분류·공급유형·요약·소스 태그)를 하나로 합친다."""
     return " ".join(
-        [d.title, d.region or "", d.category or "", d.supplyType or "", d.summary or ""]
+        [
+            d.title,
+            d.region or "",
+            d.category or "",
+            d.supplyType or "",
+            d.summary or "",
+            _SOURCE_TAGS.get(d.source, ""),
+        ]
     ).lower()
 
 
@@ -326,12 +364,12 @@ class NoticeStore:
         lo = _parse_date_filter(since, end=False)
         hi = _parse_date_filter(until, end=True)
         tokens = q.lower().split() if q else []
-        region_q = _canonicalize_region(region) if region else None
+        region_tokens = _region_query_tokens(region)
         matches: list[NoticeSummary] = []
         for d in self._items:
             if source and d.source != source:
                 continue
-            if region_q and region_q not in _canonicalize_region(d.region or ""):
+            if not _matches_region(region_tokens, d.region):
                 continue
             if supply_type and supply_type not in (d.supplyType or ""):
                 continue
@@ -356,10 +394,10 @@ class NoticeStore:
         """조건에 맞춰 점수를 매겨 공고를 추천한다."""
         today = self._today()
         want = req.status if req.status else "접수중"
-        region_q = _canonicalize_region(req.region) if req.region else None
+        region_tokens = _region_query_tokens(req.region)
         scored: list[tuple[int, str, NoticeDetail]] = []
         for d in self._items:
-            score = self._score(d, req, region_q)
+            score = self._score(d, req, region_tokens)
             if score < 0:
                 continue
             st = compute_status(d.applyStart, d.applyEnd, today)
@@ -373,9 +411,9 @@ class NoticeStore:
         return NoticeList(total=len(scored), items=items, lastUpdated=self._last_updated)
 
     @staticmethod
-    def _score(d: NoticeDetail, req: RecommendRequest, region_q: str | None) -> int:
+    def _score(d: NoticeDetail, req: RecommendRequest, region_tokens: list[str]) -> int:
         score = 0
-        if region_q and region_q not in _canonicalize_region(d.region or ""):
+        if not _matches_region(region_tokens, d.region):
             return -1
         if req.supplyType and req.supplyType not in (d.supplyType or ""):
             return -1

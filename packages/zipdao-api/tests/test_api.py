@@ -955,6 +955,84 @@ def _age_fixture(raw: Path) -> None:
     )
 
 
+def _incheon_fixture(raw: Path) -> None:
+    for nid, region in (
+        ("NEW", "인천광역시 서해구"),
+        ("OLD", "인천광역시 서구"),
+        ("BUSAN", "부산광역시 서구"),
+    ):
+        _write(
+            raw,
+            "myhome",
+            "2026",
+            nid,
+            {
+                "source": "myhome",
+                "notice_id": nid,
+                "title": f"{nid} 국민임대",
+                "detail_url": "u",
+                "posted_date": "2026-06-01",
+                "category": "국민임대",
+                "region": region,
+                "attachments": [],
+                "raw": {"normalized": {"supplyType": "국민임대"}},
+            },
+        )
+
+
+def test_region_renamed_district_matches_both_names(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _incheon_fixture(raw)
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+
+    def ids(region: str) -> set[str]:
+        r = c.get("/notices", params={"region": region, "limit": 10})
+        return {i["noticeId"] for i in r.json()["items"]}
+
+    assert ids("인천 서구") == {"NEW", "OLD"}
+    assert ids("인천 서해구") == {"NEW", "OLD"}
+    assert ids("서해구") == {"NEW", "OLD"}
+    assert ids("부산 서구") == {"BUSAN"}
+
+
+def test_region_query_tokens_match_in_any_order(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _incheon_fixture(raw)
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    r = c.get("/notices", params={"region": "서해구 인천", "limit": 10})
+    assert {i["noticeId"] for i in r.json()["items"]} == {"NEW", "OLD"}
+
+
+def test_search_source_tags_extend_keyword_match(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(
+        raw,
+        "youth_seoul",
+        "2026",
+        "Y-TAG",
+        {
+            "source": "youth_seoul",
+            "notice_id": "Y-TAG",
+            "title": "[민간임대] 신독산역 센트레빌 최초모집공고",
+            "detail_url": "u",
+            "posted_date": "2026-06-01",
+            "category": "임대주택 모집공고",
+            "region": "서울 금천구",
+            "attachments": [],
+            "raw": {"normalized": {"supplyType": "민간임대"}},
+        },
+    )
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    r = c.get("/notices", params={"q": "서울 청년", "limit": 10})
+    assert [i["noticeId"] for i in r.json()["items"]] == ["Y-TAG"]
+
+
+def test_search_lh_source_tag(tmp_path: Path) -> None:
+    c = _client(tmp_path)
+    r = c.get("/notices", params={"q": "LH 행복주택", "limit": 10})
+    assert [i["noticeId"] for i in r.json()["items"]] == ["2026-1"]
+
+
 def test_recommend_age_is_hard_filter_when_range_known(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
     _age_fixture(raw)
