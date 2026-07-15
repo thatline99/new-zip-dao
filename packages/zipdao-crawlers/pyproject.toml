@@ -7,6 +7,7 @@ dependencies = [
     "zipdao-core",
     "beautifulsoup4>=4.12",
     "lxml>=5.0",
+    "pdfplumber>=0.11.10",
 ]
 
 [project.scripts]

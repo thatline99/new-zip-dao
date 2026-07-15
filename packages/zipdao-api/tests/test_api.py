@@ -902,3 +902,76 @@ def test_qa_ties_prefer_recent(tmp_path: Path) -> None:
     c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
     r = c.post("/qa", json={"question": "대전 국민임대"})
     assert [i["noticeId"] for i in r.json()["items"]] == ["QA-NEW", "QA-OLD"]
+
+
+def _age_fixture(raw: Path) -> None:
+    _write(
+        raw,
+        "youth_seoul",
+        "2026",
+        "Y1",
+        {
+            "source": "youth_seoul",
+            "notice_id": "Y1",
+            "title": "청년안심주택 모집",
+            "detail_url": "u",
+            "posted_date": "2026-06-20",
+            "category": "임대주택 모집공고",
+            "region": "서울 금천구",
+            "attachments": [],
+            "raw": {
+                "normalized": {
+                    "supplyType": "민간임대",
+                    "applyStart": "2026-06-20",
+                    "applyEnd": "2026-07-10",
+                    "minAge": 19,
+                    "maxAge": 39,
+                }
+            },
+        },
+    )
+    _write(
+        raw,
+        "myhome",
+        "2026",
+        "M1",
+        {
+            "source": "myhome",
+            "notice_id": "M1",
+            "title": "서울 국민임대",
+            "detail_url": "u",
+            "posted_date": "2026-06-01",
+            "category": "국민임대",
+            "region": "서울특별시",
+            "attachments": [],
+            "raw": {
+                "normalized": {
+                    "supplyType": "국민임대",
+                    "applyStart": "2026-06-20",
+                    "applyEnd": "2026-07-10",
+                }
+            },
+        },
+    )
+
+
+def test_recommend_age_is_hard_filter_when_range_known(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _age_fixture(raw)
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    r45 = c.post("/recommend", json={"limit": 5, "age": 45})
+    assert [i["noticeId"] for i in r45.json()["items"]] == ["M1"]
+    r27 = c.post("/recommend", json={"limit": 5, "age": 27})
+    assert {i["noticeId"] for i in r27.json()["items"]} == {"Y1", "M1"}
+
+
+def test_notice_detail_exposes_age_and_synthesized_eligibility(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _age_fixture(raw)
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    d = c.get("/notices/youth_seoul/Y1").json()
+    assert (d["minAge"], d["maxAge"]) == (19, 39)
+    assert d["eligibility"] == "19세 이상 39세 이하"
+    m = c.get("/notices/myhome/M1").json()
+    assert m["minAge"] is None
+    assert m["eligibility"] is None

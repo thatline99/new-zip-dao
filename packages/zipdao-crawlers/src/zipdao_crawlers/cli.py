@@ -6,6 +6,7 @@ import argparse
 import json
 import logging
 import sys
+from datetime import UTC, datetime
 
 from zipdao_core.config import load_settings
 from zipdao_core.http import HttpClient
@@ -125,6 +126,69 @@ def _cmd_normalize(args: argparse.Namespace) -> int:
     return 0
 
 
+def _iter_source_manifests(raw_dir, source: str):
+    if source == "all":
+        sources = sorted(p.name for p in raw_dir.iterdir() if p.is_dir())
+    else:
+        sources = [source]
+    for src in sources:
+        for manifest in sorted((raw_dir / src).glob("*/*/manifest.json")):
+            yield src, manifest
+
+
+def _cmd_parse_docs(args: argparse.Namespace) -> int:
+    from zipdao_crawlers.notice_doc import parse_notice_pdf, pick_notice_pdf
+
+    settings = load_settings()
+    data_dir = args.data_dir or settings.data_dir
+    raw_dir = data_dir / "raw"
+    if not raw_dir.exists():
+        print(f"데이터 경로 없음: {raw_dir}", file=sys.stderr)
+        return 1
+
+    parsed = failed = 0
+    with HttpClient(
+        user_agent=settings.user_agent,
+        timeout=settings.request_timeout,
+        rate_limit_per_sec=settings.rate_limit_per_sec,
+    ) as http:
+        for src, manifest in _iter_source_manifests(raw_dir, args.source):
+            if args.limit is not None and parsed >= args.limit:
+                break
+            try:
+                data = json.loads(manifest.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            raw = data.get("raw") or {}
+            if raw.get("docParse") and not args.force:
+                continue
+            att = pick_notice_pdf(data.get("attachments") or [])
+            if att is None:
+                continue
+            try:
+                resp = http.get(att["url"])
+                result = parse_notice_pdf(resp.content)
+            except Exception as exc:
+                failed += 1
+                logging.warning(
+                    "공고문 파싱 실패(다음 실행에서 재시도): %s — %s", manifest.parent, exc
+                )
+                continue
+            raw["docParse"] = {
+                "parsedAt": datetime.now(UTC).isoformat(timespec="seconds"),
+                "file": att.get("filename"),
+                **result,
+            }
+            raw["normalized"] = normalize_for(src, raw)
+            data["raw"] = raw
+            manifest.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+            parsed += 1
+            if result:
+                logging.info("공고문 파싱: %s — %s", manifest.parent.name, result)
+    print(f"공고문 파싱 완료: {parsed}건 갱신, {failed}건 실패")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """CLI 서브커맨드(list/run/normalize) 파서를 만든다."""
     parser = argparse.ArgumentParser(prog="zipdao-crawl", description="공공임대 공고 로컬 크롤러")
@@ -144,6 +208,12 @@ def build_parser() -> argparse.ArgumentParser:
     norm = sub.add_parser("normalize", help="기존 manifest 에 raw.normalized 백필")
     norm.add_argument("source", help="소스 key 또는 'all'")
     norm.add_argument("--data-dir", type=_path, default=None, help="데이터 루트(기본 ./data)")
+
+    docs = sub.add_parser("parse-docs", help="공고문 PDF 를 받아 나이·가격을 manifest 에 백필")
+    docs.add_argument("source", help="소스 key 또는 'all'")
+    docs.add_argument("--limit", type=int, default=None, help="이번 실행 최대 처리 건수")
+    docs.add_argument("--force", action="store_true", help="이미 파싱한 공고도 다시 파싱")
+    docs.add_argument("--data-dir", type=_path, default=None, help="데이터 루트(기본 ./data)")
     return parser
 
 
@@ -164,6 +234,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_run(args)
     if args.command == "normalize":
         return _cmd_normalize(args)
+    if args.command == "parse-docs":
+        return _cmd_parse_docs(args)
     parser.print_help()
     return 1
 

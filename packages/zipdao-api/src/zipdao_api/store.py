@@ -38,6 +38,12 @@ def _is_non_housing(supply_type: str | None) -> bool:
     return "어린이집" in (supply_type or "")
 
 
+def _age_eligibility(min_age: int | None, max_age: int | None) -> str | None:
+    if min_age is None or max_age is None:
+        return None
+    return f"{min_age}세 이상 {max_age}세 이하"
+
+
 def compute_status(apply_start: str | None, apply_end: str | None, today: str) -> str:
     """접수 시작/종료일과 오늘 날짜로 공고 상태를 계산한다."""
     if apply_end and apply_end < today:
@@ -74,7 +80,9 @@ def to_detail(notice: Notice, today: str) -> NoticeDetail:
             for a in notice.attachments
         ],
         summary=n.get("summary"),
-        eligibility=n.get("eligibility"),
+        eligibility=n.get("eligibility") or _age_eligibility(n.get("minAge"), n.get("maxAge")),
+        minAge=n.get("minAge"),
+        maxAge=n.get("maxAge"),
         winnerAnnounceDate=n.get("winnerAnnounceDate"),
         supplyHouseholds=n.get("supplyHouseholds"),
         crawledAt=notice.crawled_at,
@@ -379,6 +387,11 @@ class NoticeStore:
             if d.monthlyRentKRW > req.maxMonthlyRentKRW:
                 return -1
             score += 2
+        if req.age is not None:
+            if d.minAge is not None and req.age < d.minAge:
+                return -1
+            if d.maxAge is not None and req.age > d.maxAge:
+                return -1
         if (
             req.age is not None
             and req.age <= 39

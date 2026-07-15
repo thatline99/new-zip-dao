@@ -16,6 +16,24 @@ _DISPATCH = {
 
 
 def normalize_for(source: str, raw: dict) -> dict:
-    """소스 키에 맞는 정규화 함수로 raw 데이터를 변환한다."""
+    """소스 키에 맞는 정규화 함수로 raw 데이터를 변환하고 공고문 파싱 결과를 병합한다."""
     fn = _DISPATCH.get(source)
-    return fn(raw) if fn else {}
+    normalized = fn(raw) if fn else {}
+    if normalized:
+        _apply_doc_parse(normalized, raw.get("docParse") or {})
+    return normalized
+
+
+def _apply_doc_parse(normalized: dict, doc: dict) -> None:
+    """나이는 항상, 가격은 API 값이 둘 다 없을 때만 공고문 값으로 채운다."""
+    for key in ("minAge", "maxAge"):
+        if doc.get(key) is not None:
+            normalized[key] = doc[key]
+    if (
+        not normalized.get("depositKRW")
+        and not normalized.get("monthlyRentKRW")
+        and doc.get("depositKRW")
+        and doc.get("monthlyRentKRW")
+    ):
+        normalized["depositKRW"] = doc["depositKRW"]
+        normalized["monthlyRentKRW"] = doc["monthlyRentKRW"]
