@@ -21,16 +21,29 @@ _MIN_DEPOSIT_KRW = 5_000_000
 _RENT_RANGE_KRW = (10_000, 3_000_000)
 
 
+_MIN_ADULT_MAX_AGE = 19
+_CHILD_CONTEXT = ("자녀", "영유아", "아동", "어린이")
+
+
 def extract_age_range(text: str) -> tuple[int, int] | None:
-    """상·하한이 모두 명시된 나이 범위를 찾는다(없으면 None)."""
+    """상·하한이 모두 명시된 입주자 나이 범위를 찾는다(없으면 None).
+
+    상한이 19세 미만이거나 주변에 자녀 문맥이 있으면 입주자 자격이 아니라고 보고 버린다.
+    """
     lows: list[int] = []
     highs: list[int] = []
     for pattern in _AGE_RANGE_PATTERNS:
         for m in pattern.finditer(text):
             lo, hi = int(m.group(1)), int(m.group(2))
-            if 1 <= lo < hi <= 120:
-                lows.append(lo)
-                highs.append(hi)
+            if not (1 <= lo < hi <= 120):
+                continue
+            if hi < _MIN_ADULT_MAX_AGE:
+                continue
+            context = text[max(0, m.start() - 15) : m.end() + 15]
+            if any(word in context for word in _CHILD_CONTEXT):
+                continue
+            lows.append(lo)
+            highs.append(hi)
     if not lows:
         return None
     return min(lows), max(highs)

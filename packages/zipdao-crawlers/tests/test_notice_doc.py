@@ -35,6 +35,19 @@ def test_age_range_invalid_bounds_ignored() -> None:
     assert extract_age_range("39세 이상 19세 이하") is None
 
 
+def test_age_range_child_ranges_ignored() -> None:
+    assert extract_age_range("만 3세 이상 6세 이하 유아 대상") is None
+    assert extract_age_range("만 7세 이상 12세 이하") is None
+
+
+def test_age_range_child_context_ignored() -> None:
+    assert extract_age_range("만 19세 이상 24세 이하인 자녀를 둔 가구") is None
+
+
+def test_age_range_18_to_39_is_kept() -> None:
+    assert extract_age_range("만 18세 이상 39세 이하인 자") == (18, 39)
+
+
 _PRICE_PAGE = """1. 임대 보증금 및 월 임대료
 - 청년(42세대) 임대 보증금 및 월임대료 (단위: 만원)
 19.33㎡ (25) 36 5,000 48 5,900 44 6,700 41
