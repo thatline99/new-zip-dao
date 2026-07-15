@@ -10,8 +10,8 @@ from zipdao_crawlers.base import DataGoKrCrawler
 from zipdao_crawlers.fields import _area, _count, _won
 
 LIST_EP = "http://apis.data.go.kr/B552555/lhLeaseNoticeInfo1/lhLeaseNoticeInfo1"
-DTL_EP = "http://apis.data.go.kr/B552555/lhLeaseNoticeDtlInfo1/getLeaseNoticeDtlInfo1"
-SPL_EP = "http://apis.data.go.kr/B552555/lhLeaseNoticeSplInfo1/getLeaseNoticeSplInfo1"
+DTL_EP = "https://apis.data.go.kr/B552555/lhLeaseNoticeDtlInfo1/getLeaseNoticeDtlInfo1"
+SPL_EP = "https://apis.data.go.kr/B552555/lhLeaseNoticeSplInfo1/getLeaseNoticeSplInfo1"
 PG_SZ = 100
 
 HOUSING_TYPES: list[tuple[str, str]] = [
