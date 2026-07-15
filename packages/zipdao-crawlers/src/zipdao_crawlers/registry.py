@@ -8,6 +8,7 @@ from zipdao_crawlers.base import BaseCrawler
 from zipdao_crawlers.sources.applyhome import ApplyhomeCrawler
 from zipdao_crawlers.sources.lh_apply import LhApplyCrawler
 from zipdao_crawlers.sources.myhome import MyhomeCrawler
+from zipdao_crawlers.sources.sh_ish import ShIshCrawler
 from zipdao_crawlers.sources.youth_seoul import YouthSeoulCrawler
 
 
@@ -49,7 +50,11 @@ SOURCES: list[SourceInfo] = [
         name="SH 인터넷청약시스템",
         category=PORTAL,
         base_url="https://www.i-sh.co.kr/app",
-        notes="서울주택도시개발공사. 사회주택·예술인마을·협동조합주택 등.",
+        notes=(
+            "서울주택도시개발공사. 사회주택·예술인마을·협동조합주택 등. "
+            "공고 게시판(주택임대·주택분양) POST 순회 + innoFD.do 첨부 다운로드."
+        ),
+        crawler=ShIshCrawler,
     ),
     SourceInfo(
         key="applyhome",

@@ -11,7 +11,7 @@
 | `youth_seoul` | 서울 청년안심주택 | ✅ **구현 완료** | eGov AJAX 목록(`bbsListJson.json`) + 서버렌더 상세 + `fileDown.do` 첨부. 실제 PDF 다운로드 검증됨 |
 | `gndc` | 경남개발공사 | 🟡 구현 가능(미완) | 정적 셸 + 다중 AJAX 보드(`selectListItemUserList.do`, bbsid 기반). 행 JSON 엔드포인트 추가 발굴 필요 |
 | `applyhome` | 청약홈 | ✅ **API 구현** | odcloud API(15098547). APT 분양/임대 2804건, **2020~2026 이력**. 메타+PBLANC_URL(원본 PDF는 SPA라 제외) |
-| `sh_ish` | SH 인터넷청약 | 🟡 발굴 필요 | SPA. 쿠키+브라우저 UA면 200(125KB), 쿠키 없으면 에러 무한 리다이렉트. XHR 목록 엔드포인트 발굴 필요 |
+| `sh_ish` | SH 인터넷청약 | ✅ **구현 완료** | 서버렌더 게시판. list.do POST 순회 + view.do 상세 + innoFD.do 첨부 스트림. 실제 PDF/ZIP 다운로드 검증됨(2026-07-15) |
 | `myhome` | 마이홈포털 | ✅ **API 구현** | 공공주택 API(15108420, HWSPR04). 전국 공공임대 단지·세대(보증금·월세·면적·공급유형). signguCode 3자리 |
 | `lh_apply` | LH청약플러스 | ✅ **API 구현(메타만)** | 공공데이터 API(15058530)로 **현재 공고 메타+DTL_URL** 수집. ⚠️ 5년 이력·원본 PDF 불가(아래) |
 | `gh` | 경기주택도시공사 | ⛔ robots(전체) | robots.txt `Disallow: /` — 전체 차단. 존중하여 제외 (07-15 재확인: 유지. curl 기본 UA는 robots.txt 요청도 410) |
@@ -56,10 +56,18 @@
 - APT 분양/임대 **2804건, 2020~2026(최신순)** — LH와 달리 다년 이력 제공. 메타+PBLANC_URL 수집.
 - 원본 PDF는 청약홈 사이트(SPA)라 제외. 추가 오퍼레이션(오피스텔·무순위·공공지원민간임대)은 후속 확장 가능.
 
-### 🟡 SH — XHR 발굴 필요
-SH 인터넷청약은 랜딩이 JS 셸이라 목록 XHR(JSON) 엔드포인트를 추가 발굴해야 한다.
+### ✅ sh_ish — 게시판 실측·구현 완료 (2026-07-15)
+- 6월 실측의 "SPA 셸" 판정은 쿠키 없는 접근이 에러 페이지로 리다이렉트된 것. 쿠키를 유지하면
+  eGov 계열 서버렌더 게시판이 그대로 열린다(JSON XHR 아님).
+- 목록: `POST /app/lay2/program/S1T294C{296,297}/www/brd/m_{244,247}/list.do`
+  (`page`, `multi_itm_seq`) — 분류 비트 플래그: 1 주택분양 · 2 주택임대 · 512 주택매입(제외, SH 의 기존주택 매입 공고).
+  주택임대 단독 166페이지×10행(약 1,660건), 전체 게시판(m_241)은 552페이지. 다년 이력 제공.
+- 상세: `POST {게시판}/view.do` (`seq`) — NetFunnel(대기열)은 클라이언트 스크립트라 서버가 강제하지 않음.
+- 첨부: 상세의 `initParam.downList` JSON → `GET /app/com/file/innoFD.do?brdId=&seq=&fileTp=&fileSeq=`
+  (이노릭스 스트림). `run sh_ish --limit 2` 로 PDF 8건 실다운로드·sha256 검증됨.
+- robots: `*` 그룹의 Disallow 는 /gcms/brd·/cent*/brd 등이며 /app 게시판·innoFD.do 는 허용.
 
 ## 다음 단계
 1. `DATA_GO_KR_SERVICE_KEY` 확보 → LH(`15058530`)·청약홈(`15098547`) API 소스 추가(메타데이터·상세URL).
-2. gndc 행 JSON 엔드포인트 발굴 → 정적 보드형 지역공사 패턴 확립 후 SH/마이홈 확장.
+2. gndc 행 JSON 엔드포인트 발굴 → 정적 보드형 지역공사 패턴 확립.
 3. 울산 신규 도메인(umca.co.kr) 게시판 실측 → 크롤러 구현. 대전 WAF는 별도 협의/공식 채널 검토.
