@@ -80,8 +80,8 @@ SOURCES: list[SourceInfo] = [
         key="udc",
         name="울산도시공사(UDC)",
         category=LOCAL,
-        base_url="https://www.udc.or.kr",
-        notes="율동 위드유아파트 등.",
+        base_url="https://www.umca.co.kr",
+        notes="율동 위드유아파트 등. 구 udc.or.kr 에서 도메인 이전(2026-07).",
     ),
     SourceInfo(
         key="daejeon",

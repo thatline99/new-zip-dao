@@ -17,7 +17,7 @@
 | key | 사이트 | URL | 비고 |
 | --- | --- | --- | --- |
 | `gh` | 경기주택도시공사(GH) | https://www.gh.or.kr | 다산 포레스트·김포한강 등 |
-| `udc` | 울산도시공사(UDC) | https://www.udc.or.kr | 율동 위드유아파트 등 |
+| `udc` | 울산도시공사(UDC) | https://www.umca.co.kr | 율동 위드유아파트 등. 구 udc.or.kr 에서 도메인 이전(2026-07 확인) |
 | `daejeon` | 대전도시공사 | https://www.dcco.kr | 청년매입임대 등 |
 | `gndc` | 경남개발공사 | https://www.gndc.co.kr | 거북이집 셰어하우스 등 |
 

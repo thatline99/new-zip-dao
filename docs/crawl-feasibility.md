@@ -1,7 +1,8 @@
 # 사이트별 크롤 실현가능성 (실측 결과)
 
-> 2026-06-24 실측. 각 사이트의 robots / HTML 구조 / 차단 여부를 직접 확인했다.
+> 2026-06-24 실측, 2026-07-15 재확인. 각 사이트의 robots / HTML 구조 / 차단 여부를 직접 확인했다.
 > 원칙: **robots.txt Disallow는 존중**한다. 공개 API가 공식 채널인 경우 그쪽을 우선한다.
+> 재확인 요약: GH·대전 차단 유지. 울산은 도메인 이전(umca.co.kr)으로 크롤 가능해짐. SH 접근 확인.
 
 ## 요약
 
@@ -10,12 +11,12 @@
 | `youth_seoul` | 서울 청년안심주택 | ✅ **구현 완료** | eGov AJAX 목록(`bbsListJson.json`) + 서버렌더 상세 + `fileDown.do` 첨부. 실제 PDF 다운로드 검증됨 |
 | `gndc` | 경남개발공사 | 🟡 구현 가능(미완) | 정적 셸 + 다중 AJAX 보드(`selectListItemUserList.do`, bbsid 기반). 행 JSON 엔드포인트 추가 발굴 필요 |
 | `applyhome` | 청약홈 | ✅ **API 구현** | odcloud API(15098547). APT 분양/임대 2804건, **2020~2026 이력**. 메타+PBLANC_URL(원본 PDF는 SPA라 제외) |
-| `sh_ish` | SH 인터넷청약 | 🟡 발굴 필요 | SPA 셸(1.4KB). XHR 목록 엔드포인트 발굴 필요 |
+| `sh_ish` | SH 인터넷청약 | 🟡 발굴 필요 | SPA. 쿠키+브라우저 UA면 200(125KB), 쿠키 없으면 에러 무한 리다이렉트. XHR 목록 엔드포인트 발굴 필요 |
 | `myhome` | 마이홈포털 | ✅ **API 구현** | 공공주택 API(15108420, HWSPR04). 전국 공공임대 단지·세대(보증금·월세·면적·공급유형). signguCode 3자리 |
 | `lh_apply` | LH청약플러스 | ✅ **API 구현(메타만)** | 공공데이터 API(15058530)로 **현재 공고 메타+DTL_URL** 수집. ⚠️ 5년 이력·원본 PDF 불가(아래) |
-| `gh` | 경기주택도시공사 | ⛔ robots(전체) | robots.txt `Disallow: /` — 전체 차단. 존중하여 제외 |
-| `daejeon` | 대전도시공사 | ⛔ WAF | 자동요청 400 "Request Blocked"(WAF). 우회 미시도 |
-| `udc` | 울산도시공사 | ⚠️ 연결실패 | 실측 시 응답 없음(HTTP 000). 재시도/네트워크 점검 필요 |
+| `gh` | 경기주택도시공사 | ⛔ robots(전체) | robots.txt `Disallow: /` — 전체 차단. 존중하여 제외 (07-15 재확인: 유지. curl 기본 UA는 robots.txt 요청도 410) |
+| `daejeon` | 대전도시공사 | ⛔ WAF | 자동요청 400 "Request Blocked"(WAF). 우회 미시도 (07-15 재확인: 유지) |
+| `udc` | 울산도시공사 | 🟡 구현 가능(미착수) | 구 `udc.or.kr` DNS 소멸 → **www.umca.co.kr** 이전. 200 응답, robots `Allow: /` (07-15 확인). 신규 도메인 실측 필요 |
 
 ## 세부
 
@@ -43,8 +44,12 @@
 - ⚠️ 초기 NODATA 원인 = signguCode를 5자리(11110)로 넣어서. 정답은 3자리(종로 110, 강남 680). 참고문서로 해결.
 
 ### ⚠️ 차단/실패 (추가 작업 필요)
-- **대전도시공사**: WAF가 비브라우저 요청 차단. 정식 협의 또는 공식 데이터 채널 권장.
-- **울산도시공사**: 실측 무응답. 시간대/차단 여부 재확인 필요.
+- **대전도시공사**: WAF가 비브라우저 요청 차단(2026-07-15 재확인). 정식 협의 또는 공식 데이터 채널 권장.
+
+### 🟡 울산도시공사 — 도메인 이전, 크롤 가능 (2026-07-15 확인)
+- 2026-06 실측의 "무응답(HTTP 000)" 원인 = 도메인 이전. 구 `udc.or.kr` 는 DNS 미해석.
+- 신규 홈페이지 `https://www.umca.co.kr` (메인 `/umca/main.do`, HTTP 200, robots.txt `Allow: /`).
+- 게시판 구조 실측 후 크롤러 구현 가능. `registry.py` base_url 갱신 완료.
 
 ### ✅ applyhome — 청약홈 odcloud API 구현
 - 엔드포인트: `https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/getAPTLttotPblancDetail` (serviceKey, page, perPage).
@@ -57,4 +62,4 @@ SH 인터넷청약은 랜딩이 JS 셸이라 목록 XHR(JSON) 엔드포인트를
 ## 다음 단계
 1. `DATA_GO_KR_SERVICE_KEY` 확보 → LH(`15058530`)·청약홈(`15098547`) API 소스 추가(메타데이터·상세URL).
 2. gndc 행 JSON 엔드포인트 발굴 → 정적 보드형 지역공사 패턴 확립 후 SH/마이홈 확장.
-3. 대전 WAF·울산 무응답은 별도 점검.
+3. 울산 신규 도메인(umca.co.kr) 게시판 실측 → 크롤러 구현. 대전 WAF는 별도 협의/공식 채널 검토.
