@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from zipdao_crawlers.base import BaseCrawler
 from zipdao_crawlers.sources.applyhome import ApplyhomeCrawler
+from zipdao_crawlers.sources.gh import GhCrawler
 from zipdao_crawlers.sources.gndc import GndcCrawler
 from zipdao_crawlers.sources.lh_apply import LhApplyCrawler
 from zipdao_crawlers.sources.myhome import MyhomeCrawler
@@ -81,7 +82,11 @@ SOURCES: list[SourceInfo] = [
         name="경기주택도시공사(GH)",
         category=LOCAL,
         base_url="https://www.gh.or.kr",
-        notes="다산 포레스트·김포한강 등.",
+        notes=(
+            "다산 포레스트·김포한강 등. 사이트는 robots 전면 차단 — 공공데이터 "
+            "odcloud API(15119414, 연 1회 8월 스냅샷)로 과거 이력만 수집."
+        ),
+        crawler=GhCrawler,
     ),
     SourceInfo(
         key="udc",
