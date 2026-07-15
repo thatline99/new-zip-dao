@@ -18,6 +18,7 @@ from bs4 import BeautifulSoup
 from zipdao_core.dates import year_of
 from zipdao_core.models import Attachment, Notice, NoticeStub
 from zipdao_crawlers.base import BaseCrawler
+from zipdao_crawlers.fields import supply_type_from_title
 
 BASE = "https://www.i-sh.co.kr"
 FILE_DOWN = f"{BASE}/app/com/file/innoFD.do"
@@ -34,36 +35,11 @@ _LAST_PAGE_RE = re.compile(r"getPaging\((\d+),")
 _DOWN_LIST_RE = re.compile(r"initParam\.downList\s*=\s*(\[.*?\])\s*;", re.S)
 _ISO_DATE_RE = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b")
 
-# 제목에서 공급유형을 추정하는 키워드(앞선 항목 우선). 게시판에 구조화 필드가 없다.
-_SUPPLY_KEYWORDS = [
-    "행복주택",
-    "장기전세",
-    "장기미임대",
-    "국민임대",
-    "영구임대",
-    "공공임대",
-    "매입임대",
-    "전세임대",
-    "사회주택",
-    "안심주택",
-    "두레주택",
-    "도시형생활주택",
-    "신혼희망타운",
-    "공공분양",
-]
-
-
-def _supply_from_title(title: str) -> str | None:
-    for keyword in _SUPPLY_KEYWORDS:
-        if keyword in title:
-            return keyword
-    return None
-
 
 def normalize_raw(raw: dict) -> dict:
     """SH 게시판 raw 데이터를 정규화 블록으로 변환한다(구조화 필드는 공고문 파싱에 의존)."""
     return {
-        "supplyType": _supply_from_title(str(raw.get("title") or "")),
+        "supplyType": supply_type_from_title(raw.get("title")),
         "depositKRW": None,
         "monthlyRentKRW": None,
         "areaM2": None,

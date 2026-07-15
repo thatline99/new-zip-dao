@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from zipdao_crawlers.base import BaseCrawler
 from zipdao_crawlers.sources.applyhome import ApplyhomeCrawler
+from zipdao_crawlers.sources.gndc import GndcCrawler
 from zipdao_crawlers.sources.lh_apply import LhApplyCrawler
 from zipdao_crawlers.sources.myhome import MyhomeCrawler
 from zipdao_crawlers.sources.sh_ish import ShIshCrawler
@@ -100,7 +101,11 @@ SOURCES: list[SourceInfo] = [
         name="경남개발공사",
         category=LOCAL,
         base_url="https://www.gndc.co.kr",
-        notes="거북이집 셰어하우스 등.",
+        notes=(
+            "거북이집 셰어하우스 등. getBbsArticleList.do JSON 목록(임대·분양 분류) + "
+            "download.do 첨부. 분양 게시판은 주택 제목만 필터."
+        ),
+        crawler=GndcCrawler,
     ),
     SourceInfo(
         key="myhome",

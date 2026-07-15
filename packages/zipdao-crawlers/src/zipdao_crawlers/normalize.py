@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from zipdao_crawlers.sources.applyhome import normalize_raw as _applyhome
+from zipdao_crawlers.sources.gndc import normalize_raw as _gndc
 from zipdao_crawlers.sources.lh_apply import normalize_raw as _lh_apply
 from zipdao_crawlers.sources.myhome import normalize_raw as _myhome
 from zipdao_crawlers.sources.sh_ish import normalize_raw as _sh_ish
@@ -11,6 +12,7 @@ from zipdao_crawlers.sources.youth_seoul import normalize_raw as _youth_seoul
 _DISPATCH = {
     "myhome": _myhome,
     "applyhome": _applyhome,
+    "gndc": _gndc,
     "lh_apply": _lh_apply,
     "sh_ish": _sh_ish,
     "youth_seoul": _youth_seoul,

@@ -39,3 +39,34 @@ def _first(*values: object) -> object | None:
         if v not in (None, "", 0):
             return v
     return None
+
+
+# 제목에서 공급유형을 추정하는 키워드(앞선 항목 우선).
+# 구조화 필드가 없는 게시판형 소스(sh_ish·gndc)가 쓴다.
+_SUPPLY_KEYWORDS = [
+    "행복주택",
+    "장기전세",
+    "장기미임대",
+    "국민임대",
+    "영구임대",
+    "통합공공임대",
+    "공공임대",
+    "매입임대",
+    "전세임대",
+    "사회주택",
+    "안심주택",
+    "두레주택",
+    "셰어하우스",
+    "도시형생활주택",
+    "신혼희망타운",
+    "공공분양",
+]
+
+
+def supply_type_from_title(title: object) -> str | None:
+    """제목 문자열에서 공급유형 키워드를 찾는다. 없으면 None."""
+    text = str(title or "")
+    for keyword in _SUPPLY_KEYWORDS:
+        if keyword in text:
+            return keyword
+    return None
