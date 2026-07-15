@@ -23,6 +23,8 @@ new-zip-dao/
 ├── docs/
 │   ├── sources.md                # 공고 출처 카탈로그
 │   ├── crawl-feasibility.md      # 사이트별 실측 판정(가능/차단)과 채널별 한계
+│   ├── api.md                    # 서빙 API 레퍼런스(파라미터·필터링 규칙)
+│   ├── operations.md             # 배포·운영(Docker·크론·백업·CI)
 │   └── data-layout.md            # data/ 디렉터리 레이아웃
 └── data/                         # 수집 원본 (gitignore)
 ```
@@ -33,6 +35,7 @@ new-zip-dao/
 uv sync                              # 의존성 설치(워크스페이스 전체)
 uv run zipdao-crawl list             # 등록된 소스 목록 + 구현 상태
 uv run zipdao-crawl run lh_apply --since 2021 --until 2026   # 한 소스 수집
+uv run zipdao-crawl run all                                  # 구현된 전체 소스 수집
 uv run zipdao-crawl run lh_apply --limit 3                   # 소량 시범 수집
 uv run zipdao-crawl normalize all    # 기존 manifest 에 raw.normalized 재생성(백필)
 uv run zipdao-crawl parse-docs all   # 공고문 PDF 에서 나이 자격·청년 가격 추출(백필)
@@ -53,9 +56,11 @@ uv run pytest packages/zipdao-api -q            # API 테스트
 ```
 
 엔드포인트: `GET /notices`, `GET /notices/{source}/{notice_id}`, `POST /recommend`, `POST /qa`,
-`GET /sources`, `GET /health`. 구조화 필드(보증금·월세·면적·공급유형·접수일)는 각 manifest 의 `raw.normalized`
+`GET /sources`, `GET /health` — 파라미터·필터링·지역 매칭 규칙은 [docs/api.md](docs/api.md).
+구조화 필드(보증금·월세·면적·공급유형·접수일)는 각 manifest 의 `raw.normalized`
 블록에서 읽는다. 이 블록은 크롤러가 수집 시 채우고, `zipdao-crawl normalize`(정규화 규칙 변경 후
 재생성)와 `zipdao-crawl parse-docs`(공고문 PDF 파싱 결과 병합)로 백필한다.
+운영 배포(Docker 8080·일일 크론·백업)는 [docs/operations.md](docs/operations.md).
 
 ## 수집 대상
 
@@ -70,7 +75,7 @@ GH 연 1회 스냅샷 등)는 [docs/crawl-feasibility.md](docs/crawl-feasibility
 대상 폴더: <https://drive.google.com/drive/u/0/folders/1GcJb7hMD4XmxJNdrTF3nQsuyyOUnyUDf>
 
 ```bash
-brew install rclone && rclone config   # 최초 1회: 'gdrive'(drive 타입) 원격 생성
+./scripts/setup_gdrive.sh               # 최초 1회: rclone 원격 자동 생성(브라우저 OAuth)
 DRY_RUN=1 ./scripts/sync_to_gdrive.sh   # 변경분 미리보기
 ./scripts/sync_to_gdrive.sh             # 실제 동기화
 ```

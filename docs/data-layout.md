@@ -22,8 +22,9 @@ data/
 
 정규화 산출물은 별도 디렉터리가 아니라 **각 manifest 의 `raw.normalized` 블록**에 저장된다
 (보증금·월세·면적·공급유형·접수기간·당첨자발표일 등 — 서빙 API 가 읽는 필드).
-공고문 PDF 파싱 결과(나이 자격·청년 가격)는 `raw.docParse` 로 병합된다.
-백필 명령: `zipdao-crawl normalize all` / `zipdao-crawl parse-docs all`.
+공고문 PDF 파싱 결과(나이 자격·청년 가격)는 `raw.docParse` 로 병합된다 — 나이는 문서 값이
+항상 우선, 가격은 API 값이 둘 다 없을 때만 채운다. 파싱 조건이 보수적이라(오탐 방지)
+빈 결과가 흔하다. 백필 명령: `zipdao-crawl normalize all` / `zipdao-crawl parse-docs all`.
 
 ## 설계 원칙
 
@@ -31,6 +32,8 @@ data/
 - **무결성**: 모든 첨부는 sha256·바이트수를 manifest에 기록 → 백업 검증·중복 제거 근거.
 - **소스/연도 파티션**: 5년치 대량 수집을 사이트·연도로 분할해 부분 동기화/재수집이 쉽다.
 - **분리 저장**: 이미지는 `images/`, 그 외 문서는 `attachments/` 로 분리.
+- **안전한 파일명**: 저장 시 제어문자·경로구분자를 `_` 로 치환하고 200자로 절단,
+  같은 이름이 있으면 ` (2)`, ` (3)` 접미로 유니크화.
 
 ## manifest.json 예시
 
