@@ -9,7 +9,7 @@ from collections.abc import Iterator
 from zipdao_core.dates import to_iso_date, year_of
 from zipdao_core.models import Notice, NoticeStub
 from zipdao_crawlers.base import DataGoKrCrawler
-from zipdao_crawlers.fields import _area, _count, _won
+from zipdao_crawlers.fields import _area, _count, _won, normalized_block
 from zipdao_crawlers.sources._myhome_regions import REGIONS
 
 logger = logging.getLogger(__name__)
@@ -64,20 +64,18 @@ def normalize(item: dict, units: list[dict] | None = None) -> dict:
     areas = [a for a in (_area(u.get("suplyPrvuseAr")) for u in units) if a]
     deposits = [d for d in (_won(u.get("bassRentGtn")) for u in units) if d]
     rents = [r for r in (_won(u.get("bassMtRntchrg")) for u in units) if r]
-    return {
-        "supplyType": item.get("suplyTyNm") or None,
-        "depositKRW": _won(item.get("rentGtn")) or (min(deposits) if deposits else None),
-        "monthlyRentKRW": _won(item.get("mtRntchrg")) or (min(rents) if rents else None),
-        "areaM2": min(areas) if areas else None,
-        "applyStart": to_iso_date(item.get("beginDe")),
-        "applyEnd": to_iso_date(item.get("endDe")),
-        "winnerAnnounceDate": to_iso_date(item.get("przwnerPresnatnDe")),
-        "supplyHouseholds": _count(item.get("sumSuplyCo")),
-        "summary": None,
-        "eligibility": None,
-        "supersedes": item.get("beforePblancId") or None,
-        "lhPanId": _lh_pan_id(item.get("url")),
-    }
+    return normalized_block(
+        supplyType=item.get("suplyTyNm") or None,
+        depositKRW=_won(item.get("rentGtn")) or (min(deposits) if deposits else None),
+        monthlyRentKRW=_won(item.get("mtRntchrg")) or (min(rents) if rents else None),
+        areaM2=min(areas) if areas else None,
+        applyStart=to_iso_date(item.get("beginDe")),
+        applyEnd=to_iso_date(item.get("endDe")),
+        winnerAnnounceDate=to_iso_date(item.get("przwnerPresnatnDe")),
+        supplyHouseholds=_count(item.get("sumSuplyCo")),
+        supersedes=item.get("beforePblancId") or None,
+        lhPanId=_lh_pan_id(item.get("url")),
+    )
 
 
 def normalize_raw(raw: dict) -> dict:

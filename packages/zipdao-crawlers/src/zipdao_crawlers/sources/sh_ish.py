@@ -15,10 +15,10 @@ from collections.abc import Iterator
 
 from bs4 import BeautifulSoup
 
-from zipdao_core.dates import year_of
+from zipdao_core.dates import year_out_of_range
 from zipdao_core.models import Attachment, Notice, NoticeStub
 from zipdao_crawlers.base import BaseCrawler
-from zipdao_crawlers.fields import supply_type_from_title
+from zipdao_crawlers.fields import normalized_block, supply_type_from_title
 
 BASE = "https://www.i-sh.co.kr"
 FILE_DOWN = f"{BASE}/app/com/file/innoFD.do"
@@ -38,18 +38,7 @@ _ISO_DATE_RE = re.compile(r"\b(\d{4})-(\d{2})-(\d{2})\b")
 
 def normalize_raw(raw: dict) -> dict:
     """SH 게시판 raw 데이터를 정규화 블록으로 변환한다(구조화 필드는 공고문 파싱에 의존)."""
-    return {
-        "supplyType": supply_type_from_title(raw.get("title")),
-        "depositKRW": None,
-        "monthlyRentKRW": None,
-        "areaM2": None,
-        "applyStart": None,
-        "applyEnd": None,
-        "winnerAnnounceDate": None,
-        "supplyHouseholds": None,
-        "summary": None,
-        "eligibility": None,
-    }
+    return normalized_block(supplyType=supply_type_from_title(raw.get("title")))
 
 
 class ShIshCrawler(BaseCrawler):
@@ -84,13 +73,10 @@ class ShIshCrawler(BaseCrawler):
 
             stop = False
             for row in rows:
-                year = year_of(row["posted"])
-                if year is not None:
-                    if until is not None and year > until:
-                        continue
-                    if since is not None and year < since:
-                        stop = True
-                        continue
+                out = year_out_of_range(row["posted"], since, until)
+                if out:
+                    stop = stop or out == "older"
+                    continue
                 yield NoticeStub(
                     notice_id=row["seq"],
                     title=row["title"],

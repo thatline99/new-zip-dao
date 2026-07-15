@@ -70,3 +70,25 @@ def supply_type_from_title(title: object) -> str | None:
         if keyword in text:
             return keyword
     return None
+
+
+# 정규화 블록(raw.normalized)의 공통 키 — 모든 소스가 최소 이 키들을 갖는다.
+_NORMALIZED_KEYS = (
+    "supplyType",
+    "depositKRW",
+    "monthlyRentKRW",
+    "areaM2",
+    "applyStart",
+    "applyEnd",
+    "winnerAnnounceDate",
+    "supplyHouseholds",
+    "summary",
+    "eligibility",
+)
+
+
+def normalized_block(**fields: object) -> dict:
+    """공통 키를 None 으로 깐 정규화 블록에 주어진 값을 얹는다(소스 고유 키 추가 허용)."""
+    block: dict = dict.fromkeys(_NORMALIZED_KEYS)
+    block.update(fields)
+    return block

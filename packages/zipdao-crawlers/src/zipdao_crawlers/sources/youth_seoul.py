@@ -7,9 +7,10 @@ from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
-from zipdao_core.dates import to_iso_date, year_of
+from zipdao_core.dates import to_iso_date, year_out_of_range
 from zipdao_core.models import Attachment, Notice, NoticeStub
 from zipdao_crawlers.base import BaseCrawler
+from zipdao_crawlers.fields import normalized_block
 
 BASE = "https://soco.seoul.go.kr"
 LIST_JSON = f"{BASE}/youth/pgm/home/yohome/bbsListJson.json"
@@ -25,18 +26,10 @@ _GUBUN_SUPPLY = {"1": "공공임대", "2": "민간임대"}
 
 def normalize_raw(raw: dict) -> dict:
     """청년안심주택 raw 데이터를 정규화 블록으로 변환한다."""
-    return {
-        "supplyType": _GUBUN_SUPPLY.get(str(raw.get("gubun") or "")),
-        "depositKRW": None,
-        "monthlyRentKRW": None,
-        "areaM2": None,
-        "applyStart": None,
-        "applyEnd": to_iso_date(raw.get("applyDate")),
-        "winnerAnnounceDate": None,
-        "supplyHouseholds": None,
-        "summary": None,
-        "eligibility": None,
-    }
+    return normalized_block(
+        supplyType=_GUBUN_SUPPLY.get(str(raw.get("gubun") or "")),
+        applyEnd=to_iso_date(raw.get("applyDate")),
+    )
 
 
 class YouthSeoulCrawler(BaseCrawler):
@@ -84,13 +77,10 @@ class YouthSeoulCrawler(BaseCrawler):
             stop = False
             for r in rows:
                 posted = to_iso_date(r.get("optn1") or r.get("nttBgnde") or r.get("regDate"))
-                year = year_of(posted)
-                if year is not None:
-                    if until is not None and year > until:
-                        continue
-                    if since is not None and year < since:
-                        stop = True
-                        continue
+                out = year_out_of_range(posted, since, until)
+                if out:
+                    stop = stop or out == "older"
+                    continue
                 board_id = str(r.get("boardId") or "").strip()
                 if not board_id:
                     continue

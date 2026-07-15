@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from zipdao_core.dates import to_iso_date, year_of
+from zipdao_core.dates import to_iso_date, year_out_of_range
 from zipdao_core.models import Notice, NoticeStub
 from zipdao_crawlers.base import DataGoKrCrawler
-from zipdao_crawlers.fields import _area, _count, _first
+from zipdao_crawlers.fields import _area, _count, _first, normalized_block
 
 _SVC = "https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1"
 # (오퍼레이션 URL, 이름) — APT 는 분양 위주지만 분양전환 가능임대가 섞여 있고,
@@ -38,18 +38,14 @@ def normalize_raw(raw: dict) -> dict:
     areas = [
         a for a in (_area(_first(m.get("EXCLUSE_AR"), m.get("HOUSE_TY"))) for m in models) if a
     ]
-    return {
-        "supplyType": supply,
-        "depositKRW": None,
-        "monthlyRentKRW": None,
-        "areaM2": min(areas) if areas else None,
-        "applyStart": to_iso_date(_first(raw.get("RCEPT_BGNDE"), raw.get("SUBSCRPT_RCEPT_BGNDE"))),
-        "applyEnd": to_iso_date(_first(raw.get("RCEPT_ENDDE"), raw.get("SUBSCRPT_RCEPT_ENDDE"))),
-        "winnerAnnounceDate": to_iso_date(raw.get("PRZWNER_PRESNATN_DE")),
-        "supplyHouseholds": _count(raw.get("TOT_SUPLY_HSHLDCO")),
-        "summary": None,
-        "eligibility": None,
-    }
+    return normalized_block(
+        supplyType=supply,
+        areaM2=min(areas) if areas else None,
+        applyStart=to_iso_date(_first(raw.get("RCEPT_BGNDE"), raw.get("SUBSCRPT_RCEPT_BGNDE"))),
+        applyEnd=to_iso_date(_first(raw.get("RCEPT_ENDDE"), raw.get("SUBSCRPT_RCEPT_ENDDE"))),
+        winnerAnnounceDate=to_iso_date(raw.get("PRZWNER_PRESNATN_DE")),
+        supplyHouseholds=_count(raw.get("TOT_SUPLY_HSHLDCO")),
+    )
 
 
 class ApplyhomeCrawler(DataGoKrCrawler):
@@ -75,13 +71,10 @@ class ApplyhomeCrawler(DataGoKrCrawler):
             stop = False
             for r in rows:
                 posted = to_iso_date(r.get("RCRIT_PBLANC_DE"))
-                year = year_of(posted)
-                if year is not None:
-                    if until is not None and year > until:
-                        continue
-                    if since is not None and year < since:
-                        stop = True
-                        continue
+                out = year_out_of_range(posted, since, until)
+                if out:
+                    stop = stop or out == "older"
+                    continue
                 pan_no = str(r.get("PBLANC_NO") or r.get("HOUSE_MANAGE_NO") or "").strip()
                 if not pan_no:
                     continue

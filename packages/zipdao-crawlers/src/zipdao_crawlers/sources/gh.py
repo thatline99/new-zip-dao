@@ -10,10 +10,10 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from zipdao_core.dates import to_iso_date, year_of
+from zipdao_core.dates import to_iso_date, year_out_of_range
 from zipdao_core.models import Notice, NoticeStub
 from zipdao_crawlers.base import DataGoKrCrawler
-from zipdao_crawlers.fields import _count, supply_type_from_title
+from zipdao_crawlers.fields import normalized_block, supply_type_from_title
 
 _SVC = "https://api.odcloud.kr/api/15119414/v1"
 # (스냅샷 UDDI, 판 라벨) — 최신판 먼저. 매년 8월 새 판이 등록되면 여기에 추가한다.
@@ -39,18 +39,12 @@ def notice_id_of(row: dict) -> str | None:
 
 def normalize_raw(raw: dict) -> dict:
     """GH raw 행을 정규화 블록으로 변환한다."""
-    return {
-        "supplyType": supply_type_from_title(raw.get("공고명")),
-        "depositKRW": None,
-        "monthlyRentKRW": None,
-        "areaM2": None,
-        "applyStart": to_iso_date(raw.get("접수시작일자")),
-        "applyEnd": to_iso_date(raw.get("접수종료일자")),
-        "winnerAnnounceDate": to_iso_date(raw.get("당첨자발표일자")),
-        "supplyHouseholds": _count(raw.get("공급세대수")),
-        "summary": None,
-        "eligibility": None,
-    }
+    return normalized_block(
+        supplyType=supply_type_from_title(raw.get("공고명")),
+        applyStart=to_iso_date(raw.get("접수시작일자")),
+        applyEnd=to_iso_date(raw.get("접수종료일자")),
+        winnerAnnounceDate=to_iso_date(raw.get("당첨자발표일자")),
+    )
 
 
 class GhCrawler(DataGoKrCrawler):
@@ -83,12 +77,8 @@ class GhCrawler(DataGoKrCrawler):
                 stub = self.stub_from_row(row, snapshot=snapshot)
                 if stub is None:
                     continue
-                year = year_of(stub.posted_date)
-                if year is not None:
-                    if until is not None and year > until:
-                        continue
-                    if since is not None and year < since:
-                        continue
+                if year_out_of_range(stub.posted_date, since, until):
+                    continue
                 yield stub
             if page * PER_PAGE >= total:
                 break

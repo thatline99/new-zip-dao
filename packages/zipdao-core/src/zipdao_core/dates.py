@@ -40,3 +40,18 @@ def year_of(iso_date: str | None) -> int | None:
     if iso_date and iso_date[:4].isdigit():
         return int(iso_date[:4])
     return None
+
+
+def year_out_of_range(iso_date: str | None, since: int | None, until: int | None) -> str | None:
+    """날짜 연도가 [since, until] 밖이면 'newer'/'older', 안이거나 판정 불가면 None.
+
+    'older' 는 최신순 목록을 도는 크롤러의 조기 중단 신호로 쓸 수 있다.
+    """
+    year = year_of(iso_date)
+    if year is None:
+        return None
+    if until is not None and year > until:
+        return "newer"
+    if since is not None and year < since:
+        return "older"
+    return None

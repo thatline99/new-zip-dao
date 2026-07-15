@@ -1,10 +1,25 @@
 from __future__ import annotations
 
-from zipdao_crawlers.fields import _area
+from zipdao_crawlers.fields import _NORMALIZED_KEYS, _area, normalized_block
 from zipdao_crawlers.normalize import normalize_for
 from zipdao_crawlers.sources.applyhome import normalize_raw as normalize_applyhome
 from zipdao_crawlers.sources.myhome import normalize_raw as normalize_myhome
 from zipdao_crawlers.sources.youth_seoul import normalize_raw as normalize_youth
+
+
+def test_normalized_block_fills_common_keys_and_allows_extras():
+    block = normalized_block(supplyType="행복주택", lhPanId="123")
+    assert set(_NORMALIZED_KEYS) <= set(block)
+    assert block["supplyType"] == "행복주택"
+    assert block["depositKRW"] is None
+    assert block["lhPanId"] == "123"  # 소스 고유 키 허용
+
+
+def test_normalize_for_dispatches_by_module_name():
+    # 소스 키 = 모듈명 규약으로 자동 탐색된다
+    assert normalize_for("sh_ish", {"title": "행복주택 모집"})["supplyType"] == "행복주택"
+    assert normalize_for("없는소스", {}) == {}
+    assert normalize_for("os.path", {}) == {}  # 키 형식 밖이면 임포트 시도 자체를 안 한다
 
 
 def test_myhome_units_extract_area_and_item_price_wins():

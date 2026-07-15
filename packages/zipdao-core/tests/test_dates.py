@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from zipdao_core.dates import to_iso_date, year_of
+from zipdao_core.dates import to_iso_date, year_of, year_out_of_range
 
 
 def test_iso_passthrough():
@@ -48,3 +48,13 @@ def test_year_of():
     assert year_of(None) is None
     assert year_of("") is None
     assert year_of("미정") is None
+
+
+def test_year_out_of_range():
+    assert year_out_of_range("2026-06-18", 2021, 2026) is None
+    assert year_out_of_range("2027-01-01", 2021, 2026) == "newer"
+    assert year_out_of_range("2020-12-31", 2021, 2026) == "older"
+    # 경계 없음 / 판정 불가는 수집(None)
+    assert year_out_of_range("2020-12-31", None, None) is None
+    assert year_out_of_range(None, 2021, 2026) is None
+    assert year_out_of_range("미정", 2021, 2026) is None

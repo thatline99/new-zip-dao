@@ -14,10 +14,10 @@ import re
 from collections.abc import Iterator
 from urllib.parse import quote
 
-from zipdao_core.dates import to_iso_date, year_of
+from zipdao_core.dates import to_iso_date, year_out_of_range
 from zipdao_core.models import Attachment, Notice, NoticeStub
 from zipdao_crawlers.base import BaseCrawler
-from zipdao_crawlers.fields import supply_type_from_title
+from zipdao_crawlers.fields import normalized_block, supply_type_from_title
 
 BASE = "https://www.gndc.co.kr"
 LIST_API = f"{BASE}/getBbsArticleList.do"
@@ -37,18 +37,7 @@ _HOUSING_RE = re.compile(r"주택|임대|입주자|셰어하우스")
 
 def normalize_raw(raw: dict) -> dict:
     """경남개발공사 raw 데이터를 정규화 블록으로 변환한다(구조화 필드는 공고문 파싱에 의존)."""
-    return {
-        "supplyType": supply_type_from_title(raw.get("CPDS_SUBJECT")),
-        "depositKRW": None,
-        "monthlyRentKRW": None,
-        "areaM2": None,
-        "applyStart": None,
-        "applyEnd": None,
-        "winnerAnnounceDate": None,
-        "supplyHouseholds": None,
-        "summary": None,
-        "eligibility": None,
-    }
+    return normalized_block(supplyType=supply_type_from_title(raw.get("CPDS_SUBJECT")))
 
 
 class GndcCrawler(BaseCrawler):
@@ -85,12 +74,8 @@ class GndcCrawler(BaseCrawler):
                     continue
                 if housing_only and not _HOUSING_RE.search(stub.title):
                     continue
-                year = year_of(stub.posted_date)
-                if year is not None:
-                    if until is not None and year > until:
-                        continue
-                    if since is not None and year < since:
-                        continue
+                if year_out_of_range(stub.posted_date, since, until):
+                    continue
                 yield stub
             total_pages = int((data.get("pageInfo") or {}).get("totalPageCount") or 0)
             if page >= total_pages:

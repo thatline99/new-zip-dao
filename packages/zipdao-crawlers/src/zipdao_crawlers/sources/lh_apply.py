@@ -7,7 +7,7 @@ from collections.abc import Iterator
 from zipdao_core.dates import to_iso_date
 from zipdao_core.models import Attachment, Notice, NoticeStub
 from zipdao_crawlers.base import DataGoKrCrawler
-from zipdao_crawlers.fields import _area, _count, _won
+from zipdao_crawlers.fields import _area, _count, _won, normalized_block
 
 LIST_EP = "http://apis.data.go.kr/B552555/lhLeaseNoticeInfo1/lhLeaseNoticeInfo1"
 DTL_EP = "https://apis.data.go.kr/B552555/lhLeaseNoticeDtlInfo1/getLeaseNoticeDtlInfo1"
@@ -53,18 +53,16 @@ def normalize(
     deposits = [d for d in (_won(u.get("LS_GMY")) for u in units) if d]
     rents = [r for r in (_won(u.get("RFE")) for u in units) if r]
     counts = [c for c in (_count(u.get("NOW_HSH_CNT")) for u in units) if c]
-    return {
-        "supplyType": item.get("AIS_TP_CD_NM") or item.get("UPP_AIS_TP_NM") or None,
-        "depositKRW": min(deposits) if deposits else None,
-        "monthlyRentKRW": min(rents) if rents else None,
-        "areaM2": min(areas) if areas else None,
-        "applyStart": min(starts) if starts else None,
-        "applyEnd": (max(closes) if closes else None) or to_iso_date(item.get("CLSG_DT")),
-        "winnerAnnounceDate": min(winners) if winners else None,
-        "supplyHouseholds": sum(counts) if counts else None,
-        "summary": None,
-        "eligibility": None,
-    }
+    return normalized_block(
+        supplyType=item.get("AIS_TP_CD_NM") or item.get("UPP_AIS_TP_NM") or None,
+        depositKRW=min(deposits) if deposits else None,
+        monthlyRentKRW=min(rents) if rents else None,
+        areaM2=min(areas) if areas else None,
+        applyStart=min(starts) if starts else None,
+        applyEnd=(max(closes) if closes else None) or to_iso_date(item.get("CLSG_DT")),
+        winnerAnnounceDate=min(winners) if winners else None,
+        supplyHouseholds=sum(counts) if counts else None,
+    )
 
 
 def normalize_raw(raw: dict) -> dict:
