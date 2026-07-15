@@ -14,7 +14,7 @@ data/
 │               ├── attachments/          # PDF·HWP·HWPX·ZIP·문서
 │               │   ├── 공고문.pdf
 │               │   └── 신청서.hwp
-│               └── images/               # 공고 내 이미지(평면도 등)
+│               └── images/               # 이미지형 첨부(평면도 등)
 │                   ├── 평면도.jpg
 │                   └── ...
 └── last_crawl                            # (집서버) 크론이 기록하는 마지막 수집 시각(UTC)
@@ -36,25 +36,38 @@ data/
 
 ```json
 {
-  "source": "lh_apply",
-  "notice_id": "2024-0001",
-  "title": "○○ 행복주택 입주자 모집공고",
-  "detail_url": "https://apply.lh.or.kr/...",
-  "posted_date": "2024-03-15",
-  "category": "행복주택",
-  "region": "경기",
-  "detail_html_path": "lh_apply/2024/2024-0001/detail.html",
+  "source": "sh_ish",
+  "notice_id": "307073",
+  "title": "2026년 1차 청년 매입임대주택 입주자 모집공고",
+  "detail_url": "https://www.i-sh.co.kr/app/.../m_247/view.do?seq=307073",
+  "posted_date": "2026-07-15",
+  "category": "주택임대",
+  "region": "서울",
+  "detail_html_path": "sh_ish/2026/307073/detail.html",
   "attachments": [
     {
-      "url": "https://apply.lh.or.kr/.../file.do?id=...",
+      "url": "https://www.i-sh.co.kr/app/com/file/innoFD.do?brdId=...&seq=307073&...",
       "filename": "공고문.pdf",
       "kind": "pdf",
-      "local_path": "lh_apply/2024/2024-0001/attachments/공고문.pdf",
+      "local_path": "sh_ish/2026/307073/attachments/공고문.pdf",
       "sha256": "…",
-      "bytes": 1234567,
-      "downloaded_at": "2026-06-24T05:00:00+00:00"
+      "bytes": 189502,
+      "downloaded_at": "2026-07-15T13:00:00+00:00",
+      "note": "",
+      "link_only": false
     }
   ],
-  "crawled_at": "2026-06-24T05:00:05+00:00"
+  "raw": {
+    "seq": "307073",
+    "normalized": { "supplyType": "매입임대", "depositKRW": null, "applyEnd": null },
+    "docParse": { "minAge": 19, "maxAge": 39 }
+  },
+  "crawled_at": "2026-07-15T13:00:05+00:00"
 }
 ```
+
+- `raw` — 소스 원본 데이터. `raw.normalized`(정규화 필드)는 항상, `raw.docParse` 는
+  공고문 파싱 후 존재한다.
+- `link_only: true` 인 첨부는 다운로드하지 않고 URL 만 노출한다(robots 가 파일 수집을
+  막는 lh_apply 공고문 등). 이때 `local_path`·`sha256`·`downloaded_at` 은 null.
+- `detail_html_path` 는 상세 페이지가 있는 게시판형 소스에만 채워진다(API 소스는 null).

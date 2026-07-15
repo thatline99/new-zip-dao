@@ -23,7 +23,7 @@
 
 ### lh_apply — 공공데이터 API (메타데이터만)
 - 엔드포인트: `http://apis.data.go.kr/B552555/lhLeaseNoticeInfo1/lhLeaseNoticeInfo1`
-- 필수 파라미터: `ServiceKey, PG_SZ, PAGE, PAN_NT_ST_DT(YYYY.MM.DD), CLSG_DT`. 유형 `UPP_AIS_TP_CD`(05 분양·06 임대·13 주거복지·39 신혼희망).
+- 파라미터: `serviceKey, PG_SZ, PAGE, PAN_NT_ST_DT(YYYY.MM.DD), CLSG_DT, UPP_AIS_TP_CD`(05 분양·06 임대·13 주거복지·39 신혼희망).
 - 수집 범위: 현재 게시 중 공고(약 335건)의 메타데이터 + `DTL_URL`·상태·지역·일정.
 - 한계:
   - **과거 이력 불가** — 날짜 파라미터를 과거로 줘도 현재 게시분만 반환(스냅샷 API).
@@ -77,7 +77,10 @@
 - 지역: 행 `COLM3_VAL`(시군명) → "경남 {시군}". robots.txt 없음.
 
 ### myhome — 마이홈 공공주택 API
-- 엔드포인트: `http://apis.data.go.kr/1613000/HWSPR04/rentalHouseGwList` (serviceKey, brtcCode, signguCode).
+- 목록: `https://apis.data.go.kr/1613000/HWSPR02/rsdtRcritNtcList` — 지역코드 없이 전국 일괄 조회.
+  비어 있으면 시군구(brtcCode+signguCode) 순회로 폴백.
+- 단지 보강: `https://apis.data.go.kr/1613000/HWSPR04/rentalHouseGwList` (brtcCode 2자리 + signguCode)
+  로 세대별 면적·보증금·월임대료를 붙인다.
 - signguCode 는 5자리 법정동 코드가 아니라 **3자리**다(종로 110, 강남 680) — 코드표는 `sources/_myhome_regions.py` 에 임베드.
 - 데이터: 기관·주소·공급유형·주택유형·**면적·보증금·월임대료** (문서가 아닌 구조화 데이터).
 

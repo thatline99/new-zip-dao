@@ -37,6 +37,7 @@ uv run zipdao-crawl run lh_apply --limit 3                   # 소량 시범 수
 uv run zipdao-crawl normalize all    # 기존 manifest 에 raw.normalized 재생성(백필)
 uv run zipdao-crawl parse-docs all   # 공고문 PDF 에서 나이 자격·청년 가격 추출(백필)
 uv run pytest                        # 전체 단위 테스트
+# run/normalize/parse-docs 의 --force·--data-dir 등 전체 옵션은 각 서브커맨드 --help 참고
 ```
 
 수집 결과는 `data/raw/<source>/<연도>/<공고id>/` 에 `manifest.json`·`attachments/`·`images/` 로 저장된다
@@ -52,7 +53,7 @@ uv run pytest packages/zipdao-api -q            # API 테스트
 ```
 
 엔드포인트: `GET /notices`, `GET /notices/{source}/{notice_id}`, `POST /recommend`, `POST /qa`,
-`GET /sources`. 구조화 필드(보증금·월세·면적·공급유형·접수일)는 각 manifest 의 `raw.normalized`
+`GET /sources`, `GET /health`. 구조화 필드(보증금·월세·면적·공급유형·접수일)는 각 manifest 의 `raw.normalized`
 블록에서 읽는다. 이 블록은 크롤러가 수집 시 채우고, `zipdao-crawl normalize`(정규화 규칙 변경 후
 재생성)와 `zipdao-crawl parse-docs`(공고문 PDF 파싱 결과 병합)로 백필한다.
 
