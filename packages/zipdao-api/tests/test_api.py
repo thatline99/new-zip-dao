@@ -168,7 +168,7 @@ def test_bad_manifest_is_skipped(tmp_path: Path) -> None:
     assert r.json()["total"] == 1
 
 
-def test_recommend_excludes_unknown_price_when_budget_set(tmp_path: Path) -> None:
+def test_recommend_excludes_known_prices_over_budget(tmp_path: Path) -> None:
     c = _client(tmp_path)
     r = c.post("/recommend", json={"limit": 5, "maxDepositKRW": 1000})
     assert r.status_code == 200
@@ -200,7 +200,7 @@ def test_region_alias_special_province(tmp_path: Path) -> None:
     assert c.get("/notices", params={"region": "강원", "limit": 10}).json()["total"] == 1
 
 
-def test_recommend_excludes_zero_price_when_budget_set(tmp_path: Path) -> None:
+def test_recommend_zero_price_treated_as_unknown_and_kept(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
     _write(
         raw,
@@ -220,8 +220,12 @@ def test_recommend_excludes_zero_price_when_budget_set(tmp_path: Path) -> None:
         },
     )
     c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
-    r = c.post("/recommend", json={"region": "경기", "maxMonthlyRentKRW": 150000, "limit": 5})
-    assert r.json()["total"] == 0
+    r = c.post(
+        "/recommend",
+        json={"region": "경기", "maxMonthlyRentKRW": 150000, "limit": 5, "status": "전체"},
+    )
+    assert r.json()["total"] == 1
+    assert r.json()["items"][0]["noticeId"] == "Z"
 
 
 def test_sale_notices_excluded_but_rental_convertible_kept(tmp_path: Path) -> None:
@@ -725,3 +729,176 @@ def test_search_multiword_query_requires_all_tokens(tmp_path: Path) -> None:
     r = c.get("/notices", params={"q": "국민임대 부산", "limit": 10})
     assert r.status_code == 200
     assert r.json()["total"] == 0
+
+
+def test_search_since_accepts_unpadded_and_dot_dates(tmp_path: Path) -> None:
+    c = _client(tmp_path)
+    padded = c.get("/notices", params={"since": "2026-06-06", "limit": 10}).json()
+    assert padded["total"] == 1
+    for variant in ("2026-6-6", "2026.06.06", "2026/6/6", "2026.6.6."):
+        r = c.get("/notices", params={"since": variant, "limit": 10})
+        assert r.status_code == 200, variant
+        assert r.json()["total"] == padded["total"], variant
+
+
+def test_search_invalid_date_returns_400(tmp_path: Path) -> None:
+    c = _client(tmp_path)
+    for variant in ("2026-13-45", "어제", "20260701", "2026-00-10"):
+        r = c.get("/notices", params={"since": variant, "limit": 10})
+        assert r.status_code == 400, variant
+        assert "날짜 형식" in r.json()["detail"]
+    assert c.get("/notices", params={"until": "다음주", "limit": 10}).status_code == 400
+
+
+def test_recommend_supply_type_is_hard_filter(tmp_path: Path) -> None:
+    c = _client(tmp_path)
+    r = c.post("/recommend", json={"limit": 5, "supplyType": "행복주택", "status": "전체"})
+    assert r.json()["total"] == 1
+    assert r.json()["items"][0]["noticeId"] == "2026-1"
+
+
+def _budget_fixture(raw: Path) -> None:
+    _write(
+        raw,
+        "myhome",
+        "2026",
+        "PRICED",
+        {
+            "source": "myhome",
+            "notice_id": "PRICED",
+            "title": "김포 국민임대",
+            "detail_url": "u",
+            "posted_date": "2026-06-01",
+            "category": "국민임대",
+            "region": "경기도 김포시",
+            "attachments": [],
+            "raw": {
+                "normalized": {
+                    "supplyType": "국민임대",
+                    "depositKRW": 10000000,
+                    "monthlyRentKRW": 100000,
+                    "applyStart": "2026-06-20",
+                    "applyEnd": "2026-07-10",
+                }
+            },
+        },
+    )
+    _write(
+        raw,
+        "myhome",
+        "2026",
+        "NOPRICE",
+        {
+            "source": "myhome",
+            "notice_id": "NOPRICE",
+            "title": "부천 청년주택",
+            "detail_url": "u",
+            "posted_date": "2026-06-20",
+            "category": "민간임대",
+            "region": "경기도 부천시",
+            "attachments": [],
+            "raw": {
+                "normalized": {
+                    "supplyType": "민간임대",
+                    "applyStart": "2026-06-20",
+                    "applyEnd": "2026-07-10",
+                }
+            },
+        },
+    )
+
+
+def test_recommend_keeps_unknown_price_below_budget_matches(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _budget_fixture(raw)
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    r = c.post("/recommend", json={"limit": 5, "maxMonthlyRentKRW": 150000})
+    data = r.json()
+    assert data["total"] == 2
+    assert [i["noticeId"] for i in data["items"]] == ["PRICED", "NOPRICE"]
+
+
+def test_recommend_all_status_orders_open_before_closed(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _write(
+        raw,
+        "myhome",
+        "2026",
+        "CLOSED-NEW",
+        {
+            "source": "myhome",
+            "notice_id": "CLOSED-NEW",
+            "title": "수원 국민임대",
+            "detail_url": "u",
+            "posted_date": "2026-06-20",
+            "category": "국민임대",
+            "region": "경기도 수원시",
+            "attachments": [],
+            "raw": {
+                "normalized": {
+                    "supplyType": "국민임대",
+                    "applyStart": "2026-05-01",
+                    "applyEnd": "2026-06-01",
+                }
+            },
+        },
+    )
+    _write(
+        raw,
+        "myhome",
+        "2026",
+        "OPEN-OLD",
+        {
+            "source": "myhome",
+            "notice_id": "OPEN-OLD",
+            "title": "안양 국민임대",
+            "detail_url": "u",
+            "posted_date": "2026-06-01",
+            "category": "국민임대",
+            "region": "경기도 안양시",
+            "attachments": [],
+            "raw": {
+                "normalized": {
+                    "supplyType": "국민임대",
+                    "applyStart": "2026-06-20",
+                    "applyEnd": "2026-07-10",
+                }
+            },
+        },
+    )
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    r = c.post("/recommend", json={"limit": 5, "status": "전체"})
+    assert [i["noticeId"] for i in r.json()["items"]] == ["OPEN-OLD", "CLOSED-NEW"]
+
+
+def test_qa_strips_particles_from_question(tmp_path: Path) -> None:
+    c = _client(tmp_path)
+    r = c.post("/qa", json={"question": "서울에서 지원 가능한 곳 있어?"})
+    data = r.json()
+    assert data["total"] == 1
+    assert data["items"][0]["noticeId"] == "SEOUL-1"
+
+
+def test_qa_ties_prefer_recent(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    for nid, posted in (("QA-OLD", "2020-01-01"), ("QA-NEW", "2026-06-01")):
+        _write(
+            raw,
+            "myhome",
+            posted[:4],
+            nid,
+            {
+                "source": "myhome",
+                "notice_id": nid,
+                "title": "대전 국민임대 모집",
+                "detail_url": "u",
+                "posted_date": posted,
+                "category": "국민임대",
+                "region": "대전광역시",
+                "attachments": [],
+                "raw": {"normalized": {"supplyType": "국민임대"}},
+            },
+        )
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+    r = c.post("/qa", json={"question": "대전 국민임대"})
+    assert [i["noticeId"] for i in r.json()["items"]] == ["QA-NEW", "QA-OLD"]

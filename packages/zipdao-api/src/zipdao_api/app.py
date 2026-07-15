@@ -74,18 +74,21 @@ def create_app(store: NoticeStore) -> FastAPI:
         status: NoticeStatus | None = None,
         sort: SortOrder | None = None,
     ) -> NoticeList:
-        return store.search(
-            q=q,
-            region=region,
-            supply_type=supplyType,
-            source=source,
-            since=since,
-            until=until,
-            status=status,
-            limit=min(limit, 200),
-            offset=offset,
-            sort=sort,
-        )
+        try:
+            return store.search(
+                q=q,
+                region=region,
+                supply_type=supplyType,
+                source=source,
+                since=since,
+                until=until,
+                status=status,
+                limit=min(limit, 200),
+                offset=offset,
+                sort=sort,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
 
     @app.get("/notices/{source}/{notice_id}", response_model=NoticeDetail)
     def get_notice(source: str, notice_id: str) -> NoticeDetail:

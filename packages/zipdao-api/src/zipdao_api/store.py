@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
-from datetime import date
+import re
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from zipdao_api.schema import (
@@ -87,16 +88,23 @@ def to_summary(detail: NoticeDetail, today: str) -> NoticeSummary:
     return NoticeSummary.model_validate(data)
 
 
-def _expand_since(s: str | None) -> str | None:
-    if not s:
-        return None
-    return f"{s}-01-01" if len(s) == 4 else s
+_KST = timezone(timedelta(hours=9))
 
 
-def _expand_until(s: str | None) -> str | None:
+def _parse_date_filter(s: str | None, *, end: bool) -> str | None:
+    """YYYY 또는 YYYY-MM-DD(구분자 -./, 비패딩 허용)를 ISO 날짜로 정규화한다. 실패 시 ValueError."""
     if not s:
         return None
-    return f"{s}-12-31" if len(s) == 4 else s
+    t = re.sub(r"[./]", "-", s.strip()).rstrip("-")
+    if re.fullmatch(r"\d{4}", t):
+        return f"{t}-12-31" if end else f"{t}-01-01"
+    m = re.fullmatch(r"(\d{4})-(\d{1,2})-(\d{1,2})", t)
+    if m:
+        try:
+            return date(int(m[1]), int(m[2]), int(m[3])).isoformat()
+        except ValueError:
+            pass
+    raise ValueError(f"날짜 형식이 잘못되었습니다: {s} (YYYY 또는 YYYY-MM-DD 로 입력하세요)")
 
 
 _PROV_VARIANTS: list[tuple[str, tuple[str, ...]]] = [
@@ -134,6 +142,62 @@ def _haystack(d: NoticeDetail) -> str:
     ).lower()
 
 
+_PARTICLE_SUFFIXES = (
+    "에서는",
+    "이나",
+    "으로",
+    "에서",
+    "에는",
+    "은",
+    "는",
+    "이",
+    "가",
+    "을",
+    "를",
+    "의",
+    "도",
+    "만",
+    "로",
+    "과",
+    "와",
+    "나",
+    "요",
+)
+
+_EN_STOPWORDS = {
+    "a",
+    "an",
+    "any",
+    "are",
+    "at",
+    "do",
+    "does",
+    "for",
+    "in",
+    "is",
+    "of",
+    "on",
+    "the",
+    "there",
+    "to",
+}
+
+
+def _clean_token(t: str) -> str:
+    """질문 어절에서 문장부호와 흔한 조사 접미를 떼어낸다."""
+    t = t.strip(".,?!()[]{}\"'“”‘’~·")
+    for p in _PARTICLE_SUFFIXES:
+        if len(t) > len(p) + 1 and t.endswith(p):
+            return t[: -len(p)]
+    return t
+
+
+def _question_tokens(question: str) -> set[str]:
+    """질문을 검색 토큰으로 정제한다(2자 미만·영어 불용어 제외)."""
+    tokens = (_clean_token(t) for t in question.lower().split())
+    return {t for t in tokens if len(t) >= 2 and t not in _EN_STOPWORDS}
+
+
 _STATUS_RANK = {"접수중": 0, "예정": 1, "미정": 2, "마감": 3}
 
 
@@ -163,7 +227,7 @@ class NoticeStore:
         self.reload()
 
     def _today(self) -> str:
-        return self._today_override or date.today().isoformat()
+        return self._today_override or datetime.now(_KST).date().isoformat()
 
     def reload(self) -> None:
         """raw 디렉터리의 manifest 를 다시 읽어 항목을 갱신한다."""
@@ -251,8 +315,8 @@ class NoticeStore:
     ) -> NoticeList:
         """조건(검색어·지역·공급유형·기간·상태)에 맞는 공고를 검색한다."""
         today = self._today()
-        lo = _expand_since(since)
-        hi = _expand_until(until)
+        lo = _parse_date_filter(since, end=False)
+        hi = _parse_date_filter(until, end=True)
         tokens = q.lower().split() if q else []
         region_q = _canonicalize_region(region) if region else None
         matches: list[NoticeSummary] = []
@@ -285,16 +349,19 @@ class NoticeStore:
         today = self._today()
         want = req.status if req.status else "접수중"
         region_q = _canonicalize_region(req.region) if req.region else None
-        scored: list[tuple[int, NoticeDetail]] = []
+        scored: list[tuple[int, str, NoticeDetail]] = []
         for d in self._items:
             score = self._score(d, req, region_q)
             if score < 0:
                 continue
-            if want != "전체" and compute_status(d.applyStart, d.applyEnd, today) != want:
+            st = compute_status(d.applyStart, d.applyEnd, today)
+            if want != "전체" and st != want:
                 continue
-            scored.append((score, d))
+            scored.append((score, st, d))
+        scored.sort(key=lambda x: x[2].postedDate or "", reverse=True)
+        scored.sort(key=lambda x: _STATUS_RANK.get(x[1], 9))
         scored.sort(key=lambda x: x[0], reverse=True)
-        items = [to_summary(d, today) for _, d in scored[: req.limit]]
+        items = [to_summary(d, today) for _, _, d in scored[: req.limit]]
         return NoticeList(total=len(scored), items=items, lastUpdated=self._last_updated)
 
     @staticmethod
@@ -302,18 +369,15 @@ class NoticeStore:
         score = 0
         if region_q and region_q not in _canonicalize_region(d.region or ""):
             return -1
-        budget_set = req.maxDepositKRW is not None or req.maxMonthlyRentKRW is not None
-        if budget_set and not (d.depositKRW or d.monthlyRentKRW):
+        if req.supplyType and req.supplyType not in (d.supplyType or ""):
             return -1
-        if req.maxDepositKRW is not None:
-            if d.depositKRW is None or d.depositKRW > req.maxDepositKRW:
+        if req.maxDepositKRW is not None and d.depositKRW is not None:
+            if d.depositKRW > req.maxDepositKRW:
                 return -1
             score += 2
-        if req.maxMonthlyRentKRW is not None:
-            if d.monthlyRentKRW is None or d.monthlyRentKRW > req.maxMonthlyRentKRW:
+        if req.maxMonthlyRentKRW is not None and d.monthlyRentKRW is not None:
+            if d.monthlyRentKRW > req.maxMonthlyRentKRW:
                 return -1
-            score += 2
-        if req.supplyType and req.supplyType in (d.supplyType or ""):
             score += 2
         if (
             req.age is not None
@@ -326,7 +390,7 @@ class NoticeStore:
     def relevant_to_question(self, question: str, limit: int) -> NoticeList:
         """질문 토큰과 겹치는 공고를 점수순으로 찾는다."""
         today = self._today()
-        tokens = {t for t in question.lower().split() if t}
+        tokens = _question_tokens(question)
         ranked: list[tuple[int, int, NoticeDetail]] = []
         for d in self._items:
             hay = _haystack(d)
@@ -335,6 +399,7 @@ class NoticeStore:
                 continue
             open_first = 1 if compute_status(d.applyStart, d.applyEnd, today) == "접수중" else 0
             ranked.append((score, open_first, d))
+        ranked.sort(key=lambda x: x[2].postedDate or "", reverse=True)
         ranked.sort(key=lambda x: (x[0], x[1]), reverse=True)
         items = [to_summary(d, today) for _, _, d in ranked[:limit]]
         return NoticeList(total=len(ranked), items=items, lastUpdated=self._last_updated)
