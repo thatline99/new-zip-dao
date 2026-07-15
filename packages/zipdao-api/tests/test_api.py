@@ -1045,6 +1045,38 @@ def test_region_prefix_match_blocks_containment_false_positives(tmp_path: Path) 
     assert ids("남양주") == {"NAMYANGJU"}
 
 
+def test_region_split_districts_match_old_names(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    for nid, region in (("JEMULPO", "인천광역시 제물포구"), ("YEONGJONG", "인천광역시 영종구")):
+        _write(
+            raw,
+            "myhome",
+            "2026",
+            nid,
+            {
+                "source": "myhome",
+                "notice_id": nid,
+                "title": f"{nid} 국민임대",
+                "detail_url": "u",
+                "posted_date": "2026-06-01",
+                "category": "국민임대",
+                "region": region,
+                "attachments": [],
+                "raw": {"normalized": {"supplyType": "국민임대"}},
+            },
+        )
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+
+    def ids(region: str) -> set[str]:
+        r = c.get("/notices", params={"region": region, "limit": 10})
+        return {i["noticeId"] for i in r.json()["items"]}
+
+    assert ids("인천 중구") == {"JEMULPO", "YEONGJONG"}
+    assert ids("인천 동구") == {"JEMULPO"}
+    assert ids("영종구") == {"YEONGJONG"}
+    assert ids("제물포구") == {"JEMULPO"}
+
+
 def test_region_integrated_city_matches_old_names(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
     _same_prov_fixture(raw)
