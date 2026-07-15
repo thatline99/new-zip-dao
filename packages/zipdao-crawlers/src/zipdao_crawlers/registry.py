@@ -94,7 +94,7 @@ SOURCES: list[SourceInfo] = [
         category=LOCAL,
         base_url="https://www.umca.co.kr",
         notes=(
-            "율동 위드유아파트·유홈 등. 구 udc.or.kr 에서 도메인 이전(2026-07). "
+            "율동 위드유아파트·유홈 등(구 udc.or.kr). "
             "임대공고 게시판(bbs/list.do) 순회 + FileDown.do 첨부."
         ),
         crawler=UdcCrawler,
