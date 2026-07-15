@@ -16,7 +16,7 @@
 | `lh_apply` | LH청약플러스 | ✅ **API 구현(메타만)** | 공공데이터 API(15058530)로 **현재 공고 메타+DTL_URL** 수집. ⚠️ 5년 이력·원본 PDF 불가(아래) |
 | `gh` | 경기주택도시공사 | ⛔ robots(전체) | robots.txt `Disallow: /` — 전체 차단. 존중하여 제외 (07-15 재확인: 유지. curl 기본 UA는 robots.txt 요청도 410) |
 | `daejeon` | 대전도시공사 | ⛔ WAF | 자동요청 400 "Request Blocked"(WAF). 우회 미시도 (07-15 재확인: 유지) |
-| `udc` | 울산도시공사 | 🟡 구현 가능(미착수) | 구 `udc.or.kr` DNS 소멸 → **www.umca.co.kr** 이전. 200 응답, robots `Allow: /` (07-15 확인). 신규 도메인 실측 필요 |
+| `udc` | 울산도시공사 | ✅ **구현 완료** | 구 `udc.or.kr` DNS 소멸 → **www.umca.co.kr** 이전(robots `Allow: /`). bbs/list.do 임대공고 게시판 + FileDown.do 첨부. 실다운로드 검증(2026-07-15) |
 
 ## 세부
 
@@ -61,10 +61,14 @@
 ### ⚠️ 차단/실패 (추가 작업 필요)
 - **대전도시공사**: WAF가 비브라우저 요청 차단(2026-07-15 재확인). 정식 협의 또는 공식 데이터 채널 권장.
 
-### 🟡 울산도시공사 — 도메인 이전, 크롤 가능 (2026-07-15 확인)
+### ✅ udc — 울산도시공사 구현 완료 (2026-07-15)
 - 2026-06 실측의 "무응답(HTTP 000)" 원인 = 도메인 이전. 구 `udc.or.kr` 는 DNS 미해석.
-- 신규 홈페이지 `https://www.umca.co.kr` (메인 `/umca/main.do`, HTTP 200, robots.txt `Allow: /`).
-- 게시판 구조 실측 후 크롤러 구현 가능. `registry.py` base_url 갱신 완료.
+  신규 홈페이지 `https://www.umca.co.kr` (robots.txt `Allow: /`).
+- 목록: `GET /umca/bbs/list.do?bbsId=BBS_0000000000000004&mId=001001004000000000&page=N`
+  (임대공고, 15페이지×10행 ≈ 146건 다년 이력). 분양공고(…0003)는 산업단지 용지 위주라 제외.
+- 상세: `GET /umca/bbs/view.do?bbsId=&mId=&dataId=` — 첨부는 `HHBbs.DownFile` 호출에서 추출 →
+  `GET /umca/bbs/FileDown.do?bbsId=&atchFileId=&fileSn=`.
+- `run udc --limit 2` 로 PDF/HWP 3건 실다운로드·sha256 검증됨.
 
 ### ✅ applyhome — 청약홈 odcloud API 구현
 - 엔드포인트: `https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/getAPTLttotPblancDetail` (serviceKey, page, perPage).
@@ -83,6 +87,6 @@
 - robots: `*` 그룹의 Disallow 는 /gcms/brd·/cent*/brd 등이며 /app 게시판·innoFD.do 는 허용.
 
 ## 다음 단계
-1. 울산 신규 도메인(umca.co.kr) 게시판 실측 → 크롤러 구현.
-2. GH: data.go.kr 에서 15119414 활용신청(사용자 로그인 필요) → odcloud API 소스 구현.
-3. 대전 WAF는 별도 협의/공식 채널 검토.
+1. GH: data.go.kr 에서 15119414 활용신청(사용자 로그인 필요) → odcloud API 소스 구현.
+2. 대전 WAF는 별도 협의/공식 채널 검토.
+3. sh_ish·gndc·udc 백필(--since 2021) 실행 및 정기 수집 크론 편입.

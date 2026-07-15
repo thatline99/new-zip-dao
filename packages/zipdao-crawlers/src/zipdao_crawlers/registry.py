@@ -10,6 +10,7 @@ from zipdao_crawlers.sources.gndc import GndcCrawler
 from zipdao_crawlers.sources.lh_apply import LhApplyCrawler
 from zipdao_crawlers.sources.myhome import MyhomeCrawler
 from zipdao_crawlers.sources.sh_ish import ShIshCrawler
+from zipdao_crawlers.sources.udc import UdcCrawler
 from zipdao_crawlers.sources.youth_seoul import YouthSeoulCrawler
 
 
@@ -87,7 +88,11 @@ SOURCES: list[SourceInfo] = [
         name="울산도시공사(UDC)",
         category=LOCAL,
         base_url="https://www.umca.co.kr",
-        notes="율동 위드유아파트 등. 구 udc.or.kr 에서 도메인 이전(2026-07).",
+        notes=(
+            "율동 위드유아파트·유홈 등. 구 udc.or.kr 에서 도메인 이전(2026-07). "
+            "임대공고 게시판(bbs/list.do) 순회 + FileDown.do 첨부."
+        ),
+        crawler=UdcCrawler,
     ),
     SourceInfo(
         key="daejeon",
