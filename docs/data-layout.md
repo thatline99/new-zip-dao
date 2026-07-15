@@ -17,9 +17,13 @@ data/
 │               └── images/               # 공고 내 이미지(평면도 등)
 │                   ├── 평면도.jpg
 │                   └── ...
-├── state/                                # 크롤 진행 상태(선택, 추후)
-└── structured/                           # 정규화 산출물(파이프라인 단계, 추후)
+└── last_crawl                            # (집서버) 크론이 기록하는 마지막 수집 시각(UTC)
 ```
+
+정규화 산출물은 별도 디렉터리가 아니라 **각 manifest 의 `raw.normalized` 블록**에 저장된다
+(보증금·월세·면적·공급유형·접수기간·당첨자발표일 등 — 서빙 API 가 읽는 필드).
+공고문 PDF 파싱 결과(나이 자격·청년 가격)는 `raw.docParse` 로 병합된다.
+백필 명령: `zipdao-crawl normalize all` / `zipdao-crawl parse-docs all`.
 
 ## 설계 원칙
 

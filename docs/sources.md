@@ -16,9 +16,9 @@
 
 | key | 사이트 | URL | 비고 |
 | --- | --- | --- | --- |
-| `gh` | 경기주택도시공사(GH) | https://www.gh.or.kr | 다산 포레스트·김포한강 등 |
+| `gh` | 경기주택도시공사(GH) | https://www.gh.or.kr | 다산 포레스트·김포한강 등. 사이트는 robots 전면 차단 — 공공데이터 odcloud API(15119414, 연 1회 스냅샷)로 이력만 수집 |
 | `udc` | 울산도시공사(UDC) | https://www.umca.co.kr | 율동 위드유아파트 등. 구 udc.or.kr 에서 도메인 이전(2026-07 확인) |
-| `daejeon` | 대전도시공사 | https://www.dcco.kr | 청년매입임대 등 |
+| `daejeon` | 대전도시공사 | https://www.dcco.kr | 청년매입임대 등. WAF 가 자동 요청 차단 — 미구현(협의/공식 채널 필요) |
 | `gndc` | 경남개발공사 | https://www.gndc.co.kr | 거북이집 셰어하우스 등 |
 
 ## 민간임대·공공지원 통합
@@ -38,8 +38,8 @@
 각 소스는 실측(목록/페이지네이션/상세/첨부 셀렉터 확인) 후 `sources/<key>.py` 에 구현하고
 `registry.py` 의 `SourceInfo(crawler=...)` 에 연결한다. 진행 상태는 `zipdao-crawl list` 의 ✅/⬜ 로 확인.
 
-추천 구현 순서: `lh_apply`(물량 최대·핵심) → `applyhome` → `sh_ish` → `myhome` → 지역 공사.
-```
+2026-07-15 현재 **9곳 중 8곳 구현 완료** — 미구현은 `daejeon`(WAF 차단, 협의 필요)뿐.
+사이트별 실측 판정·엔드포인트·한계는 [crawl-feasibility.md](crawl-feasibility.md) 참고.
 
 ## 공급유형(supplyType) 문서 근거 (data.go.kr 1차 출처, 2026-06)
 
