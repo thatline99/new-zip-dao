@@ -136,10 +136,11 @@ _PROV_VARIANTS: list[tuple[str, tuple[str, ...]]] = [
 ]
 
 
-# 개칭된 구의 신·구명을 함께 담아 어느 이름으로 검색해도 맞게 한다(2026-07 인천 서구→서해구).
+# 개칭·통합된 지역의 신·구명을 별도 단어로 함께 담아 어느 이름으로 검색해도 맞게 한다.
 _REGION_EXPANSIONS = [
     ("인천 서해구", "인천 서해구 서구"),
     ("인천 서구", "인천 서구 서해구"),
+    ("전남광주통합특별시", "전남광주통합특별시 전남 광주"),
 ]
 
 
@@ -159,11 +160,14 @@ def _region_query_tokens(region: str | None) -> list[str]:
 
 
 def _matches_region(tokens: list[str], region: str | None) -> bool:
-    """질의 토큰이 모두 공고 지역 문자열에 들어 있으면 매칭으로 본다."""
+    """질의 토큰이 모두 지역 단어의 어두와 일치하면 매칭으로 본다.
+
+    어두 일치만 허용해 '서구'가 '강서구'에, '양주'가 '남양주'에 걸리는 오탐을 막는다.
+    """
     if not tokens:
         return True
-    hay = _canonicalize_region(region or "")
-    return all(t in hay for t in tokens)
+    words = _canonicalize_region(region or "").split()
+    return all(any(w.startswith(t) for w in words) for t in tokens)
 
 
 _SOURCE_TAGS = {

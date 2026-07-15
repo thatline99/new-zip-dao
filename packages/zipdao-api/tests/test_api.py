@@ -1003,6 +1003,62 @@ def test_region_query_tokens_match_in_any_order(tmp_path: Path) -> None:
     assert {i["noticeId"] for i in r.json()["items"]} == {"NEW", "OLD"}
 
 
+def _same_prov_fixture(raw: Path) -> None:
+    for nid, region in (
+        ("BUSAN-SEO", "부산광역시 서구"),
+        ("BUSAN-GANGSEO", "부산광역시 강서구"),
+        ("YANGJU", "경기도 양주시"),
+        ("NAMYANGJU", "경기도 남양주시"),
+        ("JNGJ", "전남광주통합특별시"),
+    ):
+        _write(
+            raw,
+            "myhome",
+            "2026",
+            nid,
+            {
+                "source": "myhome",
+                "notice_id": nid,
+                "title": f"{nid} 국민임대",
+                "detail_url": "u",
+                "posted_date": "2026-06-01",
+                "category": "국민임대",
+                "region": region,
+                "attachments": [],
+                "raw": {"normalized": {"supplyType": "국민임대"}},
+            },
+        )
+
+
+def test_region_prefix_match_blocks_containment_false_positives(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _same_prov_fixture(raw)
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+
+    def ids(region: str) -> set[str]:
+        r = c.get("/notices", params={"region": region, "limit": 10})
+        return {i["noticeId"] for i in r.json()["items"]}
+
+    assert ids("부산 서구") == {"BUSAN-SEO"}
+    assert ids("부산 강서구") == {"BUSAN-GANGSEO"}
+    assert ids("양주") == {"YANGJU"}
+    assert ids("남양주") == {"NAMYANGJU"}
+
+
+def test_region_integrated_city_matches_old_names(tmp_path: Path) -> None:
+    raw = tmp_path / "raw"
+    _same_prov_fixture(raw)
+    c = TestClient(create_app(NoticeStore(raw, today=TODAY)))
+
+    def ids(region: str) -> set[str]:
+        r = c.get("/notices", params={"region": region, "limit": 10})
+        return {i["noticeId"] for i in r.json()["items"]}
+
+    assert "JNGJ" in ids("광주")
+    assert ids("전남") == {"JNGJ"}
+    assert ids("전남광주통합특별시") == {"JNGJ"}
+
+
 def test_search_source_tags_extend_keyword_match(tmp_path: Path) -> None:
     raw = tmp_path / "raw"
     _write(
