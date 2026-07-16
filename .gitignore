@@ -8,6 +8,8 @@
 .env.*
 !.env.example
 *.pem
+# 공개 CA 중간 인증서(개인키 아님) — 기관 서버 TLS 호환용으로 패키지에 동봉
+!packages/zipdao-core/src/zipdao_core/certs/*.pem
 *.key
 secrets/
 credentials.json

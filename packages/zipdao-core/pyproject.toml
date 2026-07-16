@@ -14,3 +14,5 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/zipdao_core"]
+# 기관 서버 TLS 호환용 CA 중간 인증서(.pem)를 wheel 에 포함(기본은 .py 만 담긴다)
+force-include = { "src/zipdao_core/certs" = "zipdao_core/certs" }
