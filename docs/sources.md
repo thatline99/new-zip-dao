@@ -18,7 +18,8 @@
 | --- | --- | --- | --- |
 | `gh` | 경기주택도시공사(GH) | https://www.gh.or.kr | 다산 포레스트·김포한강 등. 사이트는 robots 전면 차단 — 공공데이터 odcloud API(15119414, 연 1회 스냅샷)로 이력만 수집 |
 | `udc` | 울산도시공사(UDC) | https://www.umca.co.kr | 율동 위드유아파트·유홈 등(구 udc.or.kr) |
-| `daejeon` | 대전도시공사 | https://www.dcco.kr | 청년매입임대 등. WAF 가 자동 요청 차단 — 미구현(협의/공식 채널 필요) |
+| `daejeon` | 대전도시공사 | https://www.dcco.kr | 청년매입임대 등. WAF 가 자동 요청 차단 — 미구현(협의/공식 채널 필요). 공고는 myhome 경유로 일부 커버 |
+| `gmcc` | 광주광역시도시공사 | https://www.gmcc.co.kr | 영구임대·행복주택 등. 임대공고 게시판 수집 |
 | `gndc` | 경남개발공사 | https://www.gndc.co.kr | 거북이집 셰어하우스 등 |
 
 ## 민간임대·공공지원 통합

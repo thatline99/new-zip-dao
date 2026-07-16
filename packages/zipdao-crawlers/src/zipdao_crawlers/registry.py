@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from zipdao_crawlers.base import BaseCrawler
 from zipdao_crawlers.sources.applyhome import ApplyhomeCrawler
 from zipdao_crawlers.sources.gh import GhCrawler
+from zipdao_crawlers.sources.gmcc import GmccCrawler
 from zipdao_crawlers.sources.gndc import GndcCrawler
 from zipdao_crawlers.sources.lh_apply import LhApplyCrawler
 from zipdao_crawlers.sources.myhome import MyhomeCrawler
@@ -105,6 +106,17 @@ SOURCES: list[SourceInfo] = [
         category=LOCAL,
         base_url="https://www.dcco.kr",
         notes="청년매입임대 등.",
+    ),
+    SourceInfo(
+        key="gmcc",
+        name="광주광역시도시공사",
+        category=LOCAL,
+        base_url="https://www.gmcc.co.kr",
+        notes=(
+            "영구임대·행복주택 등 광주 공사 임대공고. "
+            "board.es 임대공고 게시판 순회 + boardDownload.es 첨부 직링크."
+        ),
+        crawler=GmccCrawler,
     ),
     SourceInfo(
         key="gndc",
