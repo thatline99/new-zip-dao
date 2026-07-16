@@ -83,8 +83,8 @@ SOURCES: list[SourceInfo] = [
         category=LOCAL,
         base_url="https://www.gh.or.kr",
         notes=(
-            "다산 포레스트·김포한강 등. 사이트는 robots 전면 차단 — 공공데이터 "
-            "odcloud API(15119414, 연 1회 8월 스냅샷)로 과거 이력만 수집."
+            "다산 포레스트·김포한강 등. 본사는 robots 차단 — 최신 공고+공고문은 "
+            "청약센터(apply.gh.or.kr), 과거 이력은 odcloud 스냅샷(15119414)."
         ),
         crawler=GhCrawler,
     ),

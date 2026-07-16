@@ -3,11 +3,32 @@
 from __future__ import annotations
 
 import logging
+import ssl
 import time
+from pathlib import Path
 
+import certifi
 import httpx
 
 logger = logging.getLogger("zipdao.http")
+
+_CERTS_DIR = Path(__file__).parent / "certs"
+
+
+def _ssl_context() -> ssl.SSLContext:
+    """공공기관 서버 호환 TLS 컨텍스트.
+
+    - 일부 기관 서버(apply.gh.or.kr 등)는 구식 암호군만 지원해 OpenSSL 보안수준을
+      1로 낮춘다(TLS 1.2 미만은 계속 거부).
+    - 중간 인증서를 안 보내주는 서버가 있어 certs/ 에 동봉한 잘 알려진 중간
+      인증서(Sectigo 등)를 신뢰 목록에 보탠다.
+    """
+    ctx = ssl.create_default_context(cafile=certifi.where())
+    for pem in sorted(_CERTS_DIR.glob("*.pem")):
+        ctx.load_verify_locations(pem)
+    ctx.set_ciphers("DEFAULT@SECLEVEL=1")
+    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+    return ctx
 
 
 class HttpClient:
@@ -28,6 +49,7 @@ class HttpClient:
             headers={"User-Agent": user_agent},
             timeout=timeout,
             follow_redirects=True,
+            verify=_ssl_context(),
         )
 
     def _throttle(self) -> None:

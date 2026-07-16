@@ -929,11 +929,15 @@ name = "zipdao-core"
 version = "0.1.0"
 source = { editable = "packages/zipdao-core" }
 dependencies = [
+    { name = "certifi" },
     { name = "httpx" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "httpx", specifier = ">=0.27" }]
+requires-dist = [
+    { name = "certifi", specifier = ">=2024.0" },
+    { name = "httpx", specifier = ">=0.27" },
+]
 
 [[package]]
 name = "zipdao-crawlers"

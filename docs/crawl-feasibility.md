@@ -11,7 +11,7 @@
 | `sh_ish` | SH 인터넷청약 | 게시판 크롤 구현 | list.do POST 순회 + view.do 상세 + innoFD.do 첨부. 다년 이력·원본 PDF |
 | `applyhome` | 청약홈 | API 구현 | odcloud API(15098547). 2020~ 이력 2,804건. 원본 PDF 불가(SPA) |
 | `youth_seoul` | 서울 청년안심주택 | 게시판 크롤 구현 | bbsListJson AJAX + 서버렌더 상세 + fileDown.do 첨부 |
-| `gh` | 경기주택도시공사 | API 구현(이력만) | 사이트는 robots 전면 차단 → odcloud API(15119414). 한계: 연 1회 스냅샷 |
+| `gh` | 경기주택도시공사 | 2채널 구현 | 최신: 청약센터(apply.gh.or.kr, robots 허용) 게시판+공고문 / 이력: odcloud API(15119414) 스냅샷 |
 | `udc` | 울산도시공사 | 게시판 크롤 구현 | umca.co.kr bbs/list.do + FileDown.do 첨부 |
 | `gndc` | 경남개발공사 | 게시판 크롤 구현 | getBbsArticleList.do JSON + download.do 첨부 |
 | `myhome` | 마이홈포털 | API 구현 | 공공주택 API(15108420). 보증금·월세·면적 구조화 데이터 |
@@ -49,17 +49,22 @@
 - 상세: `GET /youth/bbs/{bbsId}/view.do?boardId=..` → `fileDown.do` 첨부 링크.
 - 원본 PDF 수집 가능. 임대주택 모집공고 보드 단독 약 415건.
 
-### gh — 경기주택도시공사 (공공데이터 API, 이력 전용)
+### gh — 경기주택도시공사 (청약센터 + 공공데이터 스냅샷)
 - 사이트 직접 크롤은 robots `Disallow: /` 전면 차단이라 제외.
 - 채널: 공공데이터포털 'GH주택청약 모집정보'(fileData 15119414)의 odcloud API —
   `GET https://api.odcloud.kr/api/15119414/v1/uddi:{판별 UDDI}`. 연도판 3개(2023·2024·2025), 2017년~ 이력.
 - 필드: 공고명·게시일자·접수시작/종료일자·당첨자발표일자·입주예정년월·주택관리번호 등.
   공고문 PDF·상세 URL 없음(공고 페이지가 robots 차단 영역).
-- **연 1회(매년 8월) 스냅샷 갱신** — 최신 공고는 이 채널로 못 받는다. 새 판이 나오면
-  `sources/gh.py` 의 `SNAPSHOTS` 에 UDDI 를 추가한다.
-- **최신 공고 대안 경로(미구현)**: 청약센터 `apply.gh.or.kr` 는 본사(www)와 달리
-  robots `Allow: /*` 로 전면 허용이고 청약공고 목록(`/sb/sr/sr7150/selectPbancRentHouseList.do`,
-  공고명·게시일·마감일·상태 테이블)이 열려 있다. XHR 발굴 후 구현하면 스냅샷 공백 해소 가능.
+- **연 1회(매년 8월) 스냅샷 갱신**. 새 판이 나오면 `sources/gh.py` 의 `SNAPSHOTS` 에
+  UDDI 를 추가하고 `SNAPSHOT_END` 를 새 판 게시일로 올린다.
+- **최신 공고 채널(구현)**: 청약센터 `apply.gh.or.kr` 는 본사(www)와 달리 robots
+  `Allow: /*` 전면 허용. 목록 `POST /sb/sr/{sr7150|sr7155}/selectPbancRentHouseList.do`
+  (pageIndex, 서버렌더·게시일 내림차순, 행에 유형·시군·마감일·상태·pbancNo) →
+  상세 `POST .../selectPbancDetailView.do` (pbancNo·pbancKndCd) → 첨부
+  `selectFileDown.do` 직링크(HWP/PDF 원본 확보). 채널 간 공유 키가 없어 청약센터는
+  `SNAPSHOT_END`(마지막 스냅샷 게시일) 이후 공고만 수집한다.
+- 이 서버는 구식 암호군+중간 인증서 누락이라, 코어 HTTP 클라이언트가 OpenSSL
+  보안수준 1(TLS 1.2 하한)과 동봉 중간 인증서(`zipdao_core/certs/`)로 접속한다.
 - 서비스키로 데이터셋 활용신청이 되어 있어야 호출 가능(미신청 시 401).
 - 스냅샷 간 중복 공고는 최신판부터 순회 + 주택관리번호 기반 notice_id 로 엔진이 스킵.
 
