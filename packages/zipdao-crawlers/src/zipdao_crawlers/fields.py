@@ -41,8 +41,7 @@ def _first(*values: object) -> object | None:
     return None
 
 
-# 제목에서 공급유형을 추정하는 키워드(앞선 항목 우선).
-# 구조화 필드가 없는 게시판형 소스(sh_ish·gndc)가 쓴다.
+# 앞선 항목 우선 — 더 구체적인 유형이 먼저 매칭되도록 정렬한다.
 _SUPPLY_KEYWORDS = [
     "행복주택",
     "장기전세",

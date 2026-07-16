@@ -85,8 +85,6 @@ class GhCrawler(DataGoKrCrawler):
         for endpoint, snapshot in SNAPSHOTS:
             yield from self._iter_snapshot(endpoint, snapshot, since, until)
 
-    # ── 청약센터(apply.gh.or.kr) 채널 ──────────────────────────────
-
     def _iter_apply_board(
         self, board: str, label: str, since: int | None, until: int | None
     ) -> Iterator[NoticeStub]:
@@ -211,8 +209,6 @@ class GhCrawler(DataGoKrCrawler):
         }
         raw["normalized"] = normalize_raw(raw)
         return Notice.from_stub(stub, source=self.key, attachments=attachments, raw=raw)
-
-    # ── 공공데이터 스냅샷 채널 ─────────────────────────────────────
 
     def _iter_snapshot(
         self, endpoint: str, snapshot: str, since: int | None, until: int | None
