@@ -68,7 +68,6 @@ def test_iter_notices_keeps_only_rental_category():
 
     class FakeHttp:
         def get(self, url, **kwargs):
-            # 첫 페이지만 내용, 이후는 빈 tbody 로 순회 종료
             if kwargs.get("params", {}).get("nPage", 1) == 1:
                 return FakeResp()
             return type("R", (), {"text": "<table><tbody></tbody></table>"})()

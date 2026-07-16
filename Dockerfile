@@ -6,7 +6,6 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 COPY packages ./packages
 
-# 락파일 그대로 의존성 설치 (dev 제외)
 RUN uv sync --frozen --no-dev
 
 # 공고 데이터는 런타임 볼륨으로 마운트한다 (API 는 $DATA_DIR/raw 를 읽음)
