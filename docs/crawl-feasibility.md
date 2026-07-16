@@ -15,7 +15,8 @@
 | `udc` | 울산도시공사 | 게시판 크롤 구현 | umca.co.kr bbs/list.do + FileDown.do 첨부 |
 | `gndc` | 경남개발공사 | 게시판 크롤 구현 | getBbsArticleList.do JSON + download.do 첨부 |
 | `myhome` | 마이홈포털 | API 구현 | 공공주택 API(15108420). 보증금·월세·면적 구조화 데이터 |
-| `daejeon` | 대전도시공사 | 차단(WAF) | 자동 요청을 400 "Request Blocked" 로 차단. 협의/공식 채널 필요 |
+| `daejeon` | 대전도시공사 | 차단(WAF) | 자동 요청을 400 "Request Blocked" 로 차단. 수집 불가(보류) |
+| `dudc` | 대구도시개발공사 | 차단(robots) | robots `Disallow: /` 전면 차단. 수집 불가(보류, 미등록) |
 
 모든 구현 소스는 `run <key> --limit N` 실수집으로 파일 무결성(sha256)까지 검증되어 있다.
 
@@ -94,21 +95,23 @@
 
 ### daejeon — 차단 (미구현)
 - WAF 가 비브라우저 요청을 400 "Request Blocked" 로 차단. 우회하지 않는다.
-- 진행하려면 기관 협의 또는 공식 데이터 채널 확보가 필요.
+- 우회하지 않으므로 수집 불가로 보류한다. 대구도시개발공사(dudc.or.kr)도 robots
+  `Disallow: /` 전면 차단이라 같은 사유로 보류(미등록). 두 곳 공고는 myhome·LH·
+  청약홈 통합 경로로 일부 커버된다.
 
-## 신규 소스 후보 실측 (미등록)
+## 신규 소스 후보
 
-직접 소스가 없는 광역시의 커버리지 공백(대전 사례와 동급)을 메울 후보들.
+직접 소스가 없는 광역시의 커버리지 공백을 메울 후보들.
 
 | 후보 | 판정 | 근거 |
 | --- | --- | --- |
-| 부산도시공사 | 크롤 가능(발굴 필요) | 본사 robots `Allow: /`, BMC청약센터(apply.bmc.busan.kr)는 `Allow: /*`. 청약 목록(smw113020/selectPbancRentHouseList.do)은 XHR 렌더 — 엔드포인트 발굴 필요 |
-| 광주광역시도시공사 | 크롤 가능(게시판 URL 확인 필요) | gmcc.co.kr robots 에 `*` 그룹 없음(허용). 메인이 서버렌더로 모집공고 노출 — 공고 게시판 경로 실측 필요 |
-| 대구도시개발공사 | 직접 크롤 차단 | dudc.or.kr robots `Disallow: /`. 공공데이터셋에 임대공고류 없음. 대안: 대구안방(anbang.daegu.go.kr, 대구시 포털) 게시판 발굴 — 임대공고 게재 여부 불확실 |
+| 부산도시공사 | 크롤 가능(미구현) | 본사 robots `Allow: /`, BMC청약센터(apply.bmc.busan.kr)는 `Allow: /*`. 청약 목록(smw113020/selectPbancRentHouseList.do)은 XHR 렌더 — 엔드포인트 발굴 필요 |
+| 광주광역시도시공사 | 구현 완료(`gmcc`) | board.es 임대공고 수집 |
+| 대구도시개발공사 | 차단(보류) | dudc.or.kr robots `Disallow: /`. 공공데이터셋에 임대공고류 없음 |
 
 부산 공공데이터셋은 현황성(임대료·관리현황)뿐이라 공고 수집은 사이트 크롤이 경로다.
 
 ## 남은 작업
-1. sh_ish·gndc·udc·gh 백필(`--since 2021`) 및 정기 수집 크론 편입.
+1. 신규 소스(sh_ish·gndc·udc·gh·gmcc) 백필(`--since 2021`) 및 정기 수집 크론 편입.
 2. GH 최신 공고가 myhome 통합 경로로 올라오는지 확인(연 1회 스냅샷 공백 보완).
-3. 대전: 협의/공식 채널 검토. GH: 매년 8월 신규 스냅샷 UDDI 추가.
+3. 부산도시공사(BMC청약센터) 구현 검토. GH: 매년 8월 신규 스냅샷 UDDI 추가.

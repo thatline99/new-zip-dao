@@ -7,7 +7,7 @@
 
 > AGENTIC PLAYER 10 (카카오 × 과기정통부 PlayMCP 공모전) 출품작. 벤치마크: [내집다오](https://myzipdao.com/)
 >
-> 현재 단계: 등록 소스 9곳 중 **8곳 구현**, 집 서버에서 상시 수집·서빙 운영 중
+> 현재 단계: 등록 소스 10곳 중 **9곳 구현**, 집 서버에서 상시 수집·서빙 운영 중
 > (매일 KST 06/18시 크론: 수집 → 정규화 → API 재기동). OCI 이전은 추후.
 
 ## 구조 (uv 워크스페이스)
@@ -65,7 +65,7 @@ uv run pytest packages/zipdao-api -q            # API 테스트
 ## 수집 대상
 
 전국 통합 청약 포털(LH청약플러스·SH·청약홈·청년안심주택), 지역 도시·개발공사(GH·UDC·대전·경남), 마이홈포털.
-등록 9곳 중 대전도시공사(WAF 차단, 협의 필요)를 제외한 **8곳 구현 완료** — 상태는 `zipdao-crawl list` 로 확인.
+등록 10곳 중 대전도시공사(WAF 차단, 수집 불가)를 제외한 **9곳 구현 완료** — 상태는 `zipdao-crawl list` 로 확인.
 전체 목록·URL은 [docs/sources.md](docs/sources.md), 사이트별 실측 판정과 채널별 한계(LH 이력·PDF 불가,
 GH 연 1회 스냅샷 등)는 [docs/crawl-feasibility.md](docs/crawl-feasibility.md).
 
