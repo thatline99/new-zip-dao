@@ -31,7 +31,9 @@ if [[ ! -d "$SRC" ]]; then
   exit 1
 fi
 
-ARGS=(--drive-root-folder-id "$FOLDER_ID" --fast-list --transfers 8 --checkers 16 -P)
+# macOS 메타파일(AppleDouble ._*, .DS_Store)은 백업 대상에서 제외한다
+ARGS=(--drive-root-folder-id "$FOLDER_ID" --fast-list --transfers 8 --checkers 16 -P
+  --exclude "._*" --exclude ".DS_Store")
 [[ "${DRY_RUN:-0}" == "1" ]] && ARGS+=(--dry-run)
 
 echo "→ rclone sync '$SRC' → ${REMOTE}: (folder ${FOLDER_ID})"
